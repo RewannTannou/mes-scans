@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mes Scans</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>📚 Mes Scans</h1>
+    <div class="topbar-actions">
+      <button id="btn-export" class="ghost" title="Télécharger une sauvegarde">Exporter</button>
+      <label class="ghost button" title="Restaurer une sauvegarde">
+        Importer<input type="file" id="input-import" accept="application/json" hidden>
+      </label>
+      <button id="btn-add" class="primary">+ Ajouter un scan</button>
+    </div>
+  </header>
+
+  <section class="toolbar">
+    <input type="search" id="search" placeholder="Rechercher un titre…">
+    <select id="filter-site"><option value="">Tous les sites</option></select>
+    <select id="sort">
+      <option value="lastRead">Lu récemment</option>
+      <option value="title">Titre (A→Z)</option>
+      <option value="added">Ajout récent</option>
+    </select>
+  </section>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <main id="grid" class="grid"></main>
+  <p id="empty" class="empty" hidden>Aucun scan ici pour l'instant. Clique sur <b>+ Ajouter un scan</b> pour commencer.</p>
+
+  <dialog id="dialog">
+    <form id="form" method="dialog">
+      <h2 id="form-title">Ajouter un scan</h2>
+      <label>Titre *
+        <input name="title" required autocomplete="off">
+      </label>
+      <label>Lien du chapitre que tu lis
+        <input name="url" type="url" placeholder="https://site.com/manga/one-piece/chapitre-1100">
+        <small id="url-hint" class="hint"></small>
+      </label>
+      <div class="row">
+        <label>Chapitre actuel
+          <input name="chapter" type="number" step="0.1" min="0" value="1">
+        </label>
+        <label>Statut
+          <select name="status"></select>
+        </label>
+      </div>
+      <label>Image de couverture (URL)
+        <input name="cover" type="url" placeholder="https://…/cover.jpg">
+      </label>
+      <div class="form-actions">
+        <button type="button" id="btn-delete" class="danger" hidden>Supprimer</button>
+        <span class="spacer"></span>
+        <button type="button" id="btn-cancel" class="ghost">Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

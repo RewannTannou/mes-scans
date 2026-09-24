@@ -1,0 +1,7 @@
+# Zips générés pour Mozilla (npx web-ext build)
+dist/
+web-ext-artifacts/
+
+# Fichiers système
+.DS_Store
+Thumbs.db

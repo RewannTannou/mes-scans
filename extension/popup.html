@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Page d'un scan déjà suivi -->
+  <section id="tracked" hidden>
+    <div class="scan">
+      <div id="t-cover" class="thumb"></div>
+      <div>
+        <p class="label">Tu suis ce scan</p>
+        <h2 id="t-title"></h2>
+        <p id="t-site" class="muted"></p>
+      </div>
+    </div>
+    <div class="chapter">
+      <button id="t-dec" title="Chapitre précédent">−</button>
+      <span id="t-chapter"></span>
+      <button id="t-inc" title="Chapitre suivant">+</button>
+    </div>
+    <button id="t-next" class="primary" hidden>✓ J'ai lu un chapitre (+1)</button>
+    <p id="t-note" class="saved"></p>
+    <button id="t-enable" class="ghost small" hidden>🔍 Activer le suivi automatique (sans ouvrir le popup)</button>
+    <button id="t-move" class="primary" hidden>+ Ajouter ce site à ce manga</button>
+    <button id="t-add-anyway" class="ghost small" hidden>Ce n'est pas le même : l'ajouter comme nouveau scan</button>
+  </section>
+
+  <!-- Page pas encore suivie -->
+  <form id="add" hidden>
+    <p class="label">Ajouter ce scan</p>
+    <div class="scan">
+      <div id="a-preview" class="thumb"></div>
+      <label class="grow">Titre
+        <input name="title" required autocomplete="off">
+      </label>
+    </div>
+    <div class="row">
+      <label>Chapitre
+        <input name="chapter" type="number" step="0.1" min="0">
+      </label>
+      <label>Statut
+        <select name="status"></select>
+      </label>
+    </div>
+    <label>Couverture (URL)
+      <input name="cover" type="url">
+    </label>
+    <small id="a-hint" class="hint"></small>
+    <button type="submit" class="primary">+ Ajouter à ma liste</button>
+  </form>
+
+  <p id="unsupported" class="muted" hidden>Ouvre un chapitre sur un site de scans pour l'ajouter.</p>
+
+  <footer>
+    <button id="open-dashboard" class="ghost">📚 Ouvrir ma bibliothèque</button>
+  </footer>
+
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
