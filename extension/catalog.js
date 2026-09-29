@@ -4,8 +4,8 @@
 
 // ---------- AniList ----------
 
-const ANILIST_CARD = `id siteUrl status chapters format countryOfOrigin averageScore genres
-  title { romaji english native } synonyms coverImage { large } startDate { year }
+const ANILIST_CARD = `id siteUrl status chapters volumes format countryOfOrigin averageScore popularity genres
+  title { romaji english native } synonyms coverImage { large extraLarge color } bannerImage startDate { year }
   description(asHtml: false)`;
 
 async function searchAniList(query) {
@@ -19,6 +19,19 @@ async function searchAniList(query) {
 async function trendingAniList() {
   const data = await anilist(`{Page(perPage:12){media(type:MANGA,isAdult:false,sort:TRENDING_DESC){${ANILIST_CARD}}}}`);
   return data.Page.media;
+}
+
+// Les rangées de l'onglet « Découvrir », en une seule requête (alias par rangée)
+async function discoverRows() {
+  const since = (new Date().getFullYear() - 1) * 10000; // AniList : dates au format AAAAMMJJ
+  const page = (args) => `Page(perPage:20){media(type:MANGA,isAdult:false,${args}){${ANILIST_CARD}}}`;
+  const data = await anilist(`{
+    trending: ${page('sort:TRENDING_DESC')}
+    top: ${page('sort:SCORE_DESC,popularity_greater:20000')}
+    manhwa: ${page('countryOfOrigin:"KR",sort:POPULARITY_DESC')}
+    fresh: ${page(`startDate_greater:${since},sort:POPULARITY_DESC`)}
+  }`);
+  return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, value.media]));
 }
 
 // Recommandations AniList pour plusieurs mangas en une seule requête.
