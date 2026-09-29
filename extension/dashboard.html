@@ -20,6 +20,20 @@
     </div>
   </header>
 
+  <nav class="views" id="views">
+    <button data-view="library" class="active">📚 Bibliothèque</button>
+    <button data-view="releases">🆕 Dernières sorties <span id="releases-count" class="view-count" hidden></span></button>
+  </nav>
+
+  <section class="toolbar check-bar">
+    <button id="btn-check" class="ghost">🔄 Vérifier les sorties</button>
+    <span id="last-check" class="muted-small"></span>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="notify"> 🔔 Me prévenir des nouveaux chapitres</label>
+    <label class="toggle" title="Un fichier dans Téléchargements/MesScans chaque semaine"><input type="checkbox" id="backup"> 💾 Sauvegarde auto</label>
+  </section>
+
+  <div id="view-library">
   <section class="toolbar">
     <input type="search" id="search" placeholder="Rechercher un titre…">
     <select id="filter-site"><option value="">Tous les sites</option></select>
@@ -32,14 +46,6 @@
     </select>
   </section>
 
-  <section class="toolbar check-bar">
-    <button id="btn-check" class="ghost">🔄 Vérifier les sorties</button>
-    <span id="last-check" class="muted-small"></span>
-    <span class="spacer"></span>
-    <label class="toggle"><input type="checkbox" id="notify"> 🔔 Me prévenir des nouveaux chapitres</label>
-    <label class="toggle" title="Un fichier dans Téléchargements/MesScans chaque semaine"><input type="checkbox" id="backup"> 💾 Sauvegarde auto</label>
-  </section>
-
   <section id="resume" class="resume" hidden>
     <h2>Reprendre la lecture</h2>
     <div id="resume-row" class="resume-row"></div>
@@ -49,6 +55,20 @@
 
   <main id="grid" class="grid"></main>
   <p id="empty" class="empty" hidden>Aucun scan ici pour l'instant. Clique sur <b>+ Ajouter un scan</b> pour commencer.</p>
+  </div>
+
+  <!-- Dernières sorties : journal des nouveaux chapitres détectés -->
+  <section id="view-releases" hidden>
+    <div class="toolbar releases-bar">
+      <div class="segmented" id="release-layout">
+        <button data-layout="list" class="active">☰ Liste</button>
+        <button data-layout="catalog">▦ Catalogue</button>
+      </div>
+      <span class="spacer"></span>
+      <label class="toggle"><input type="checkbox" id="hide-read"> Masquer les chapitres déjà lus</label>
+    </div>
+    <div id="releases"></div>
+  </section>
 
   <dialog id="dialog">
     <form id="form" method="dialog">
@@ -99,5 +119,6 @@
   <script src="shared.js"></script>
   <script src="dashboard.js"></script>
   <script src="stats.js"></script>
+  <script src="releases.js"></script>
 </body>
 </html>

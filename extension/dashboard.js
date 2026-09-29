@@ -385,7 +385,8 @@ $('#btn-rename-site').addEventListener('click', () => {
 });
 renderLastCheck();
 
-loadScans().then((data) => {
+// Promesse utilisée par releases.js pour attendre la liste des scans
+const scansReady = loadScans().then((data) => {
   scans = data;
   render();
 });

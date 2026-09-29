@@ -95,7 +95,7 @@ async function runCheck() {
     if (scan.status === 'done' || scan.status === 'dropped' || !hasSource(scan)) continue;
     try {
       const latest = await fetchLatestChapter(scan);
-      if (latest !== null) await enqueue(() => updateLatest(scan.id, latest));
+      if (latest !== null) await enqueue(() => updateLatest(scan.id, latest.num, latest.link));
     } catch (err) {
       console.warn(`Vérification impossible pour « ${scan.title} »`, err);
     }
@@ -103,14 +103,29 @@ async function runCheck() {
   await browser.storage.local.set({ lastCheck: new Date().toISOString() });
 }
 
-async function updateLatest(id, latest) {
+// link : le lien (site) où le chapitre est sorti
+async function updateLatest(id, latest, link) {
   const scans = await loadScans();
   const scan = scans.find((s) => s.id === id);
   if (!scan || scan.latest === latest) return;
   const previous = scan.latest;
   scan.latest = latest;
   await saveScans(scans);
-  if (previous != null && latest > previous) notifyNewChapter(scan, latest - previous);
+  // Première vérification (previous inconnu) : ce n'est pas une sortie, juste l'état actuel
+  if (previous != null && latest > previous) {
+    await logRelease({ id, from: previous, to: latest, link: link || scan.url });
+    notifyNewChapter(scan, latest - previous);
+  }
+}
+
+// Journal des sorties, du plus récent au plus ancien :
+// releases = [{ id, from: 268, to: 270, link, at }, …] (« chapitres 269 à 270 sortis »)
+const MAX_RELEASES = 300;
+
+async function logRelease(release) {
+  const { releases = [] } = await browser.storage.local.get('releases');
+  releases.unshift({ ...release, at: new Date().toISOString() });
+  await browser.storage.local.set({ releases: releases.slice(0, MAX_RELEASES) });
 }
 
 // Quand tu visites la page, content.js nous donne le plus grand chapitre de la
@@ -118,7 +133,7 @@ async function updateLatest(id, latest) {
 // (protection anti-robots…), ou pour voir une sortie avant la prochaine vérification.
 async function recordLatestFromPage(tab, num) {
   const hit = await findTracked(tab);
-  if (hit && num > (hit.scan.latest ?? 0)) await updateLatest(hit.scan.id, num);
+  if (hit && num > (hit.scan.latest ?? 0)) await updateLatest(hit.scan.id, num, hit.link);
 }
 
 async function notifyNewChapter(scan, count) {

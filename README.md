@@ -38,6 +38,7 @@ Plus besoin de noter tes chapitres ni de passer d'un site à l'autre pour savoir
 
 ### Nouveaux chapitres
 - Vérification **toutes les heures** du dernier chapitre disponible de chaque scan.
+- Onglet **🆕 Dernières sorties** : toutes les sorties détectées, regroupées par jour (aujourd'hui, hier…), en **liste** ou en **catalogue** de couvertures. Chaque sortie indique si tu l'as déjà lue, et « Lire » ouvre directement le prochain chapitre à lire. Option pour masquer les chapitres déjà lus.
 - Pastille **« 201 à lire »** sur les cartes, compteur sur l'icône de l'extension.
 - **Notifications** Firefox quand un chapitre sort pour un scan « En cours » (désactivables).
 
@@ -200,6 +201,7 @@ GroupScanSite/
 │   ├── popup.html/js/css Menu de l'icône : scan de la page, +1/−1, ajout
 │   ├── dashboard.html/js La bibliothèque
 │   ├── stats.js          Fenêtre des statistiques
+│   ├── releases.js       Onglet « Dernières sorties » (liste / catalogue)
 │   ├── style.css         Styles communs (bibliothèque et popup)
 │   └── icons/            Icônes
 ├── docs/

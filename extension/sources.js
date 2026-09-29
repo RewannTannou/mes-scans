@@ -23,7 +23,8 @@ function hasSource(scan) {
   return scanLinks(scan).some(sourceForLink);
 }
 
-// Plus grand chapitre disponible sur l'ensemble des sites du scan, ou null
+// Plus grand chapitre disponible sur l'ensemble des sites du scan :
+// { num, link } (link = le site où il est sorti), ou null
 async function fetchLatestChapter(scan) {
   let best = null;
   for (const link of scanLinks(scan)) {
@@ -31,7 +32,7 @@ async function fetchLatestChapter(scan) {
     if (!source) continue;
     try {
       const num = await source.latest(link, scan);
-      if (num !== null && (best === null || num > best)) best = num;
+      if (num !== null && (best === null || num > best.num)) best = { num, link };
     } catch (err) {
       console.warn(`${source.name} : vérification impossible pour ${siteName(link)}`, err);
     }

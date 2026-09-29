@@ -47,6 +47,7 @@ L'extension est écrite en JavaScript simple, sans framework ni étape de compil
 | `popup.js` | menu de l'icône | Affiche le scan de la page (ou le formulaire d'ajout), boutons +1/−1. |
 | `dashboard.js` | onglet `dashboard.html` | La bibliothèque. |
 | `stats.js` | onglet `dashboard.html` | La fenêtre des statistiques. |
+| `releases.js` | onglet `dashboard.html` | L'onglet « Dernières sorties » (liste ou catalogue). |
 
 **Source de vérité unique : `storage.local`.** Chaque contexte lit la liste, la modifie et la réenregistre. Les pages ouvertes (bibliothèque) se rafraîchissent via `storage.onChanged`. Dans l'arrière-plan, toutes les écritures passent par une **file d'attente** (`enqueue`) pour que deux mises à jour rapprochées ne s'écrasent pas.
 
@@ -59,6 +60,7 @@ Tout est dans `browser.storage.local` :
 | Clé | Contenu |
 |---|---|
 | `scans` | La liste des scans (voir ci-dessous). |
+| `releases` | Journal des sorties, du plus récent au plus ancien : `[{ id, from, to, link, at }, …]` (300 maximum). |
 | `history` | Chapitres lus par jour : `{ "2026-09-25": { "<idScan>": 3, … }, … }` (≈ 400 jours conservés). |
 | `settings` | `{ notify: bool, backup: bool }` (les deux à `true` par défaut). |
 | `lastCheck` | Date ISO de la dernière vérification des nouveautés. |
@@ -154,6 +156,8 @@ Le popup ajoute une vérification par **titre exact** (`findByTitle`), tous site
 - Alarme `check-new-chapters` : 1 min après le démarrage, puis toutes les **60 min**. Elle déclenche aussi le rafraîchissement AniList et la sauvegarde hebdomadaire.
 - `runCheck` parcourt les scans qui ne sont ni « Terminé » ni « Abandonné » et appelle `fetchLatestChapter`, qui interroge chaque lien du scan via sa source (`sources.js`) et garde le **maximum**.
 - `updateLatest` enregistre `scan.latest` ; si la valeur **augmente** par rapport à une valeur déjà connue (pas lors de la première vérification), une notification est envoyée pour les scans « En cours ».
+- Chaque hausse est aussi ajoutée au **journal des sorties** (`releases`) : `from` = ancien dernier chapitre, `to` = nouveau, `link` = site où il est sorti, `at` = date de détection. La première vérification d'un scan n'y figure pas (ce n'est pas une sortie).
+- L'onglet « Dernières sorties » (`releases.js`) regroupe ce journal par jour. Une sortie est « lue » quand `scan.chapter >= to`. « Lire » ouvre le prochain chapitre non lu (`floor(chapter) + 1`, sans dépasser `to`) sur le site de la sortie. Le choix liste / catalogue et « masquer les lus » sont retenus dans le `localStorage` de la page.
 - Badge global de l'icône : nombre de scans « En cours » avec `unreadCount(scan) > 0` (`unreadCount = ceil(latest − chapter)`).
 
 ### Sources existantes (`SOURCES` dans `sources.js`)
