@@ -1,0 +1,23 @@
+# Vérification à chaque envoi : tests + vérification officielle de Mozilla
+name: Vérification
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tests
+        run: npm test
+
+      - name: Vérification Mozilla (web-ext lint)
+        # --self-hosted : l'extension se met à jour depuis GitHub (update_url), c'est voulu
+        run: npx --yes web-ext@latest lint --source-dir extension --self-hosted

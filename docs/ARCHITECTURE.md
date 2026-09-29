@@ -226,4 +226,14 @@ Si le site affiche le chapitre d'une façon que `collectChapterTexts` ne voit pa
 - Pas de dépendance ni de compilation : garder des fichiers lisibles tels quels (Mozilla les relit lors de la signature).
 - `shared.js` utilise `var` pour ses constantes de haut niveau : le fichier peut être injecté deux fois dans la même page, et un `const` redéclaré y provoquerait une erreur.
 - Tout texte venant d'un site ou de l'utilisateur passe par `escapeHtml` avant d'être inséré en HTML.
-- Avant chaque publication : `npx web-ext lint` doit afficher **0 erreur** (les avertissements `innerHTML` sont attendus, les valeurs étant échappées).
+- Avant chaque publication : `npm test` doit passer et `npm run lint` afficher **0 erreur** (les avertissements `innerHTML` sont attendus, les valeurs étant échappées). Les deux tournent aussi automatiquement sur GitHub.
+- Toute nouvelle fonctionnalité de l'arrière-plan ou de `shared.js` vient avec un test dans `tests/`. Le faux Firefox (`tests/helpers/extension.js`) enregistre les notifications, téléchargements et badges dans `calls`, et `settle()` attend la fin des tâches en file d'attente.
+
+---
+
+## Mises à jour automatiques
+
+- `browser_specific_settings.gecko.update_url` pointe vers `updates.json` à la racine du dépôt (servi par `raw.githubusercontent.com`).
+- Firefox le consulte environ une fois par jour et installe toute version plus récente listée, après avoir vérifié son empreinte `update_hash`.
+- La publication (`.github/workflows/release.yml`) ne se déclenche que si la version du manifest n'a pas encore de release `v<version>` : augmenter la version suffit pour publier.
+- Seules les installations d'une version **qui contient déjà `update_url`** (2.2.0 et suivantes) se mettent à jour seules.

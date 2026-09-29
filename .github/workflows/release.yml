@@ -1,0 +1,94 @@
+# Publication automatique : quand la version de extension/manifest.json change
+# sur main, l'extension est signée par Mozilla, publiée dans une « Release »
+# GitHub, et updates.json est mis à jour pour que Firefox l'installe tout seul.
+#
+# Prérequis (une seule fois) : deux secrets dans Settings > Secrets and variables > Actions
+#   AMO_JWT_ISSUER  et  AMO_JWT_SECRET  (clés API de addons.mozilla.org)
+
+name: Publication
+
+on:
+  push:
+    branches: [main]
+    paths: [extension/**]
+  workflow_dispatch: # bouton « Run workflow » dans l'onglet Actions
+
+permissions:
+  contents: write # créer la release et mettre à jour updates.json
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Version à publier
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./extension/manifest.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "La version $VERSION est déjà publiée : rien à faire."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Clés Mozilla présentes ?
+        if: steps.version.outputs.skip != 'true'
+        id: keys
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+        run: |
+          if [ -z "$AMO_JWT_ISSUER" ]; then
+            echo "::warning::Secrets AMO_JWT_ISSUER / AMO_JWT_SECRET absents : publication ignorée (voir README, « Mises à jour automatiques »)."
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tests
+        if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
+        run: npm test
+
+      - name: Signature par Mozilla
+        if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
+        run: |
+          npx --yes web-ext@latest sign \
+            --source-dir extension \
+            --artifacts-dir dist \
+            --channel unlisted \
+            --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
+            --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
+            --approval-timeout 3600000
+          mv dist/*.xpi "dist/mes-scans-${{ steps.version.outputs.version }}.xpi"
+
+      - name: Release GitHub
+        if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.version.outputs.version }}
+          gh release create "v$V" "dist/mes-scans-$V.xpi" \
+            --title "Mes Scans $V" \
+            --notes "Extension signée par Mozilla. Installation : ouvrir le fichier .xpi avec Firefox (ou about:addons > roue dentée > Installer un module depuis un fichier). Les versions suivantes s'installent ensuite automatiquement." \
+            --generate-notes
+
+      - name: Mise à jour de updates.json
+        if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
+        run: |
+          V=${{ steps.version.outputs.version }}
+          node scripts/add-update.js "$V" \
+            "https://github.com/${{ github.repository }}/releases/download/v$V/mes-scans-$V.xpi" \
+            "dist/mes-scans-$V.xpi"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add updates.json
+          git commit -m "updates.json : version $V"
+          git push
