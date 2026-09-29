@@ -3,6 +3,11 @@
     "mes-scans@groupscansite": {
       "updates": [
         {
+          "version": "2.3.1",
+          "update_link": "https://github.com/RewannTannou/mes-scans/releases/download/v2.3.1/mes-scans-2.3.1.xpi",
+          "update_hash": "sha256:98a53d2048a448529905359447da706c8a84b5a95a5ef6635ed5b360eb652ec9"
+        },
+        {
           "version": "2.3.0",
           "update_link": "https://github.com/RewannTannou/mes-scans/releases/download/v2.3.0/mes-scans-2.3.0.xpi",
           "update_hash": "sha256:f5abd24735e31324be91d42f4d31804348299ee70146e103cf94e29fa0ec5091"
