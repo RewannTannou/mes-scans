@@ -164,12 +164,17 @@ $('#hide-read').addEventListener('change', () => {
 
 // ---------- Bibliothèque / Dernières sorties ----------
 
+const VIEWS = ['library', 'releases', 'discover'];
+
 function showView(view) {
-  $('#view-library').hidden = view === 'releases';
-  $('#view-releases').hidden = view !== 'releases';
+  if (!VIEWS.includes(view)) view = 'library';
+  for (const v of VIEWS) $(`#view-${v}`).hidden = v !== view;
+  // La barre « Vérifier les sorties » ne concerne pas « Découvrir »
+  $('.check-bar').hidden = view === 'discover';
   document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   pref.set('view', view);
   if (view === 'releases') renderReleases();
+  if (view === 'discover' && typeof renderDiscover === 'function') renderDiscover();
 }
 
 $('#views').addEventListener('click', (e) => {

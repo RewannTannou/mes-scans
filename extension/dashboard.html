@@ -23,6 +23,7 @@
   <nav class="views" id="views">
     <button data-view="library" class="active">📚 Bibliothèque</button>
     <button data-view="releases">🆕 Dernières sorties <span id="releases-count" class="view-count" hidden></span></button>
+    <button data-view="discover">🔍 Découvrir</button>
   </nav>
 
   <section class="toolbar check-bar">
@@ -69,6 +70,17 @@
     </div>
     <div id="releases"></div>
   </section>
+
+  <!-- Découvrir : recherche AniList, recommandations, tendances, import -->
+  <section id="view-discover" hidden>
+    <div class="toolbar discover-bar">
+      <input type="search" id="discover-search" placeholder="Chercher un manga, un manhwa, un webtoon… (titre en anglais, japonais ou coréen)" autocomplete="off">
+      <button id="btn-import-anilist" class="ghost" title="Ajoute les mangas de ta liste AniList publique">📥 Importer ma liste AniList</button>
+    </div>
+    <div id="discover"></div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
 
   <dialog id="dialog">
     <form id="form" method="dialog">
@@ -117,8 +129,11 @@
   </dialog>
 
   <script src="shared.js"></script>
+  <script src="sources.js"></script>
+  <script src="catalog.js"></script>
   <script src="dashboard.js"></script>
   <script src="stats.js"></script>
   <script src="releases.js"></script>
+  <script src="discover.js"></script>
 </body>
 </html>

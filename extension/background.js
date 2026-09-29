@@ -306,3 +306,95 @@ async function backupIfNeeded(force = false) {
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'check-new-chapters') backupIfNeeded();
 });
+
+// ---------- Trouver un site pour les scans sans lien ----------
+// Mangas ajoutés depuis « Découvrir » ou importés d'AniList : on les cherche
+// sur anime-sama, un par un. Chaque scan n'est cherché qu'une fois
+// (scan.sourceSearchedAt), pour ne pas insister quand il n'y est pas.
+
+let findingSources = null;
+
+function findMissingSources() {
+  findingSources ??= runFindSources().finally(() => (findingSources = null));
+  return findingSources;
+}
+
+async function runFindSources() {
+  const scans = await loadScans();
+  const host = animeSamaHost(scans);
+  for (const scan of scans.filter((s) => !s.url && !s.sourceSearchedAt)) {
+    let url = null;
+    try {
+      url = await findOnAnimeSama([scan.title, ...(scan.pub?.titles || [])], host);
+    } catch (err) {
+      console.warn(`anime-sama indisponible pour « ${scan.title} »`, err);
+      return; // on réessaiera plus tard
+    }
+    await enqueue(async () => {
+      const fresh = await loadScans();
+      const s = fresh.find((x) => x.id === scan.id);
+      if (!s || s.url) return;
+      s.sourceSearchedAt = new Date().toISOString();
+      if (url) s.url = url;
+      await saveScans(fresh);
+    });
+    await new Promise((r) => setTimeout(r, 1500)); // ne pas surcharger le site
+  }
+}
+
+browser.storage.onChanged.addListener((changes) => {
+  const scans = changes[STORAGE_KEY]?.newValue;
+  if (scans?.some((s) => !s.url && !s.sourceSearchedAt)) findMissingSources();
+});
+browser.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'check-new-chapters') findMissingSources();
+});
+
+// ---------- Clic droit « Ajouter à Mes Scans » ----------
+
+function createMenus() {
+  browser.menus.removeAll().then(() => {
+    browser.menus.create({ id: 'add-link', title: 'Ajouter ce lien à Mes Scans', contexts: ['link'] });
+    browser.menus.create({ id: 'add-page', title: 'Ajouter cette page à Mes Scans', contexts: ['page'] });
+  });
+}
+browser.runtime.onInstalled.addListener(createMenus);
+browser.runtime.onStartup.addListener(createMenus);
+
+browser.menus.onClicked.addListener((info, tab) => {
+  const isLink = info.menuItemId === 'add-link';
+  if (!isLink && info.menuItemId !== 'add-page') return;
+  const url = isLink ? info.linkUrl : tab.url;
+  const title = isLink ? info.linkText : tab.title;
+  enqueue(() => addScanFromPage(url, title));
+});
+
+// Ajoute (ou retrouve) le scan d'une adresse et prévient par une notification
+async function addScanFromPage(url, rawTitle) {
+  if (!/^https?:/.test(url || '')) return;
+  const scans = await loadScans();
+  const existing = matchScan(scans, url)?.scan || findByTitle(scans, cleanTitle(rawTitle, url));
+  if (existing) {
+    notify('Déjà dans ta liste', `${existing.title} — chapitre ${formatChapter(existing.chapter)}`);
+    return;
+  }
+  const detected = detectChapter(url);
+  const scan = {
+    id: crypto.randomUUID(),
+    title: cleanTitle(rawTitle, url) || siteName(url),
+    url: detected ? detected.template : url,
+    altUrls: [],
+    chapter: detected ? detected.num : 0,
+    status: detected ? 'reading' : 'plan',
+    cover: '', // la couverture AniList sera ajoutée automatiquement
+    lastRead: detected ? new Date().toISOString() : null,
+    createdAt: new Date().toISOString(),
+  };
+  scans.push(scan);
+  await saveScans(scans);
+  notify('Ajouté à Mes Scans', detected ? `${scan.title} — chapitre ${formatChapter(scan.chapter)}` : scan.title);
+}
+
+function notify(title, message) {
+  browser.notifications.create({ type: 'basic', iconUrl: 'icons/icon-96.png', title, message });
+}

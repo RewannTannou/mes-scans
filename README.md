@@ -36,6 +36,13 @@ Plus besoin de noter tes chapitres ni de passer d'un site à l'autre pour savoir
 - Recherche, filtre par site, tri (lu récemment, titre, ajout récent, chapitres à lire).
 - Le bouton **Lire** ouvre directement ton chapitre actuel sur le dernier site où tu as lu.
 
+### Découvrir et ajouter
+- Onglet **🔍 Découvrir** : recherche de n'importe quel manga, manhwa ou webtoon sur AniList (couverture, résumé, genres, note, état de parution), ajout en un clic (« À lire » ou « Je le lis »).
+- Le manga ajouté est **cherché automatiquement sur anime-sama** : son lien est rempli tout seul s'il y a des scans.
+- **Recommandé pour toi** : suggestions AniList d'après les mangas de ta liste, et **tendances du moment**.
+- **Importer ta liste AniList** (liste publique) à partir de ton pseudo : nouveaux mangas ajoutés, chapitres des mangas déjà suivis avancés.
+- **Clic droit** sur un lien ou une page → **Ajouter à Mes Scans**.
+
 ### Nouveaux chapitres
 - Vérification **toutes les heures** du dernier chapitre disponible de chaque scan.
 - Onglet **🆕 Dernières sorties** : toutes les sorties détectées, regroupées par jour (aujourd'hui, hier…), en **liste** ou en **catalogue** de couvertures. Chaque sortie indique si tu l'as déjà lue, et « Lire » ouvre directement le prochain chapitre à lire. Option pour masquer les chapitres déjà lus.
@@ -134,7 +141,8 @@ Modifiables dans `about:addons` → roue ⚙️ → **Gérer les raccourcis des 
 
 Les seules requêtes réseau faites par l'extension :
 - vers **les sites de tes scans**, pour connaître le dernier chapitre sorti ;
-- vers **AniList** (`graphql.anilist.co`), avec uniquement le titre du manga, pour l'état de parution.
+- vers **AniList** (`graphql.anilist.co`), avec le titre du manga (état de parution, recherche, recommandations) ou ton pseudo si tu importes ta liste ;
+- vers **anime-sama**, avec le titre du manga, pour trouver sa page de scans.
 
 | Permission | Pourquoi |
 |---|---|
@@ -145,6 +153,7 @@ Les seules requêtes réseau faites par l'extension :
 | `alarms` | Vérifier les nouveaux chapitres toutes les heures. |
 | `notifications` | Te prévenir des sorties. |
 | `downloads` | Enregistrer la sauvegarde automatique hebdomadaire. |
+| `menus` | Ajouter « Ajouter à Mes Scans » au menu du clic droit. |
 
 ---
 
@@ -205,11 +214,13 @@ GroupScanSite/
 │   ├── shared.js         Fonctions communes : stockage, détection et reconnaissance des chapitres
 │   ├── background.js     Arrière-plan : suivi des onglets, nouveautés, notifications, historique, sauvegarde
 │   ├── sources.js        Dernier chapitre par site (anime-sama, liste de chapitres) + AniList
+│   ├── catalog.js        Recherche / recommandations / import AniList, recherche sur anime-sama
 │   ├── content.js        Script de page : surveille le chapitre affiché sur les pages de tes scans
 │   ├── popup.html/js/css Menu de l'icône : scan de la page, +1/−1, ajout
 │   ├── dashboard.html/js La bibliothèque
 │   ├── stats.js          Fenêtre des statistiques
 │   ├── releases.js       Onglet « Dernières sorties » (liste / catalogue)
+│   ├── discover.js       Onglet « Découvrir »
 │   ├── style.css         Styles communs (bibliothèque et popup)
 │   └── icons/            Icônes
 ├── docs/

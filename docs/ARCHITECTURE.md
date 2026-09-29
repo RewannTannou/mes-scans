@@ -48,6 +48,8 @@ L'extension est écrite en JavaScript simple, sans framework ni étape de compil
 | `dashboard.js` | onglet `dashboard.html` | La bibliothèque. |
 | `stats.js` | onglet `dashboard.html` | La fenêtre des statistiques. |
 | `releases.js` | onglet `dashboard.html` | L'onglet « Dernières sorties » (liste ou catalogue). |
+| `catalog.js` | arrière-plan + onglet `dashboard.html` | Recherche, recommandations, tendances et import AniList ; recherche d'un manga sur anime-sama. |
+| `discover.js` | onglet `dashboard.html` | L'onglet « Découvrir ». |
 
 **Source de vérité unique : `storage.local`.** Chaque contexte lit la liste, la modifie et la réenregistre. Les pages ouvertes (bibliothèque) se rafraîchissent via `storage.onChanged`. Dans l'arrière-plan, toutes les écritures passent par une **file d'attente** (`enqueue`) pour que deux mises à jour rapprochées ne s'écrasent pas.
 
@@ -178,6 +180,16 @@ Les requêtes partent de l'arrière-plan avec `credentials: 'include'` (cookies 
 - Si `scan.pub.id` est défini (fiche choisie à la main), requête directe `Media(id)`.
 - Chargée dès qu'un scan n'a pas de `pub.checkedAt` (ajout, fiche modifiée), puis rafraîchie tous les **7 jours**. 2,5 s entre deux requêtes pour respecter la limite d'AniList.
 - Remplit `scan.cover` si elle est vide.
+
+---
+
+## Découvrir, import et recherche de site
+
+- **Recherche / recommandations / tendances** : requêtes GraphQL AniList (`searchAniList`, `recommendationsFor`, `trendingAniList`). Les recommandations sont demandées pour 10 de tes mangas (ceux en cours, les plus récents d'abord) en **une seule requête** avec des alias (`m0: Media(id:…)`, `m1: …`) ; un titre recommandé par plusieurs de tes mangas passe en premier.
+- **Ajouter depuis AniList** : `scanFromMedia` crée un scan **sans lien** (`url: ''`) avec sa fiche (`pub`, dont `pub.titles` = tous les titres connus).
+- **Recherche de site** (`findMissingSources`, arrière-plan) : pour chaque scan sans lien et jamais cherché, `findOnAnimeSama` interroge la recherche du site (`POST /template-php/defaut/fetch.php`, champ `query`), garde un résultat dont le titre ou un titre alternatif correspond exactement (normalisé), puis vérifie sur la fiche qu'une version scans existe (`panneauScan("Scans", "scan/vf")`, VF préférée). Le scan est marqué `sourceSearchedAt` qu'il soit trouvé ou non. 1,5 s entre deux mangas.
+- **Import AniList** : `MediaListCollection(userName, type: MANGA)` ; `mergeAniListEntries` ajoute les mangas absents (statut AniList converti, `progress` → chapitre) et avance le chapitre des mangas déjà suivis, sans jamais le faire reculer.
+- **Clic droit** (`menus`) : `addScanFromPage` crée le scan à partir de l'adresse et du texte du lien / titre de la page (`cleanTitle`), ou signale qu'il est déjà suivi, par notification.
 
 ---
 

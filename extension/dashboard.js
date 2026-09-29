@@ -100,7 +100,7 @@ function renderCard(s) {
         <h3 class="title" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3>
         ${pubLine(s)}
         <div class="meta">
-          <span class="site" title="${escapeHtml(sitesTitle)}">${site ? escapeHtml(site) : 'aucun site'}${others.length ? ` <b>+${others.length}</b>` : ''}</span>
+          <span class="site" title="${escapeHtml(sitesTitle)}">${site ? escapeHtml(site) : s.sourceSearchedAt ? 'aucun site' : 'recherche du site…'}${others.length ? ` <b>+${others.length}</b>` : ''}</span>
           <span>${timeAgo(s.lastRead)}</span>
         </div>
         <div class="chapter">

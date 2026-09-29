@@ -65,12 +65,17 @@ function createBrowser() {
     runtime: { onMessage: on('message'), onInstalled: on('installed'), onStartup: on('startup'), getURL: (p) => p },
     permissions: { onAdded: on('permissions'), contains: async () => true },
     alarms: { create() {}, onAlarm: on('alarm') },
-    notifications: { create: (id, opts) => calls.notifications.push(opts), onClicked: on('notificationClick'), clear() {} },
+    notifications: {
+      create: (idOrOpts, opts) => calls.notifications.push(opts ?? idOrOpts), // l'identifiant est facultatif
+      onClicked: on('notificationClick'),
+      clear() {},
+    },
     action: {
       setBadgeText: (o) => (calls.badges[o.tabId ?? 'global'] = o.text),
       setBadgeBackgroundColor() {},
     },
     commands: { onCommand: on('command') },
+    menus: { create() {}, removeAll: async () => {}, onClicked: on('menuClick') },
     scripting: { executeScript: async () => [] },
     downloads: { download: async (opts) => calls.downloads.push(opts) },
   };
@@ -90,9 +95,12 @@ function loadExtension(files, { fetch } = {}) {
     DOMParser: FakeDOMParser,
     URL: Object.assign(class extends URL {}, { createObjectURL: () => 'blob:test', revokeObjectURL() {} }),
     Blob,
+    URLSearchParams,
     console: { ...console, warn() {}, error() {} }, // les échecs réseau attendus restent silencieux
-    // Minuteurs « détachés » : un nettoyage prévu dans 60 s ne bloque pas la fin des tests
-    setTimeout: (fn, ms) => {
+    // Minuteurs accélérés : les pauses courtes (politesse envers les sites) passent
+    // tout de suite, et les longues (nettoyage dans 60 s) ne bloquent pas la fin des tests
+    setTimeout: (fn, ms = 0) => {
+      if (ms < 10000) return setTimeout(fn, 0);
       const timer = setTimeout(fn, ms);
       timer.unref();
       return timer;

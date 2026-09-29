@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadExtension } = require('./helpers/extension');
 
-const FILES = ['shared.js', 'sources.js', 'background.js'];
+const FILES = ['shared.js', 'sources.js', 'catalog.js', 'background.js'];
 const today = () => new Date().toLocaleDateString('sv');
 
 function setup(options) {

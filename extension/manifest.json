@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mes Scans",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Regroupe tes scans et retient automatiquement le chapitre où tu en es.",
   "icons": {
     "48": "icons/icon.svg",
@@ -13,9 +13,9 @@
     "default_icon": "icons/icon.svg"
   },
   "background": {
-    "scripts": ["shared.js", "sources.js", "background.js"]
+    "scripts": ["shared.js", "sources.js", "catalog.js", "background.js"]
   },
-  "permissions": ["storage", "tabs", "activeTab", "scripting", "alarms", "notifications", "downloads"],
+  "permissions": ["storage", "tabs", "activeTab", "scripting", "alarms", "notifications", "downloads", "menus"],
   "host_permissions": ["*://*/*"],
   "content_scripts": [
     { "matches": ["*://*/*"], "js": ["shared.js", "content.js"], "run_at": "document_idle" }

@@ -289,6 +289,23 @@ async function readChapterFromPage(tabId) {
   }
 }
 
+// Titre d'une page de scan, sans le chapitre ni le nom du site :
+// « A Returner's Magic Should Be Special - Chapitre 62 - Phenix Scans »
+//   ->  « A Returner's Magic Should Be Special »
+function cleanTitle(raw, url) {
+  let t = (raw || '')
+    .replace(/\b(chap(?:ter|itre)?|ch\.?|episode|ep\.?|scan)\s*\d+.*$/i, '')
+    .split(/\s[-|–—:]\s/)[0]
+    .replace(/[\s\-–|:,]+$/, '')
+    .trim();
+  if (t) return t;
+  // Sinon on devine à partir de l'URL : /manga/a-returners-magic/chapitre/62
+  const ignore = /^(manga|mangas|manhwa|series|serie|comics?|webtoons?|read|lecture-en-ligne|title|chapitre|chapter|scan|\d+)$/i;
+  const segs = new URL(url).pathname.split('/').filter((s) => s && !ignore.test(s) && !/\d+$/.test(s));
+  const slug = segs.pop() || '';
+  return slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
