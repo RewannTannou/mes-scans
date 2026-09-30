@@ -30,10 +30,10 @@ function renderPlanning() {
   const waiting = active.length - known.length;
 
   if (!known.length) {
-    el.innerHTML = `
+    setHTML(el, `
       <p class="empty">Le planning se remplit tout seul au fil des sorties.<br>
       Il faut au moins ${MIN_RELEASES_FOR_RHYTHM} sorties enregistrées pour connaître le rythme d'un manga
-      (environ 3 semaines pour une série hebdomadaire).${active.length ? `<br>${active.length} manga${active.length > 1 ? 's' : ''} en attente.` : ''}</p>`;
+      (environ 3 semaines pour une série hebdomadaire).${active.length ? `<br>${active.length} manga${active.length > 1 ? 's' : ''} en attente.` : ''}</p>`);
     return;
   }
 
@@ -60,14 +60,14 @@ function renderPlanning() {
       ${items.length ? items.map(planningItem).join('') : '<p class="muted-small">Rien de prévu</p>'}
     </section>`;
 
-  el.innerHTML = `
+  setHTML(el, `
     <div class="plan-grid">
       ${late.length ? column('⏰ En retard', late, 'is-late') : ''}
       ${days.map((d, i) => column(dayName(d.date, i), d.items, i === 0 ? 'is-today' : '')).join('')}
     </div>
     ${later.length ? `<h3 class="plan-later-title">Plus tard</h3><div class="plan-later">${later.map(planningItem).join('')}</div>` : ''}
     <p class="muted-small plan-note">Estimations d'après les ${releases.length} sorties enregistrées.
-      ${waiting ? `${waiting} manga${waiting > 1 ? 's' : ''} n'ont pas encore assez de sorties pour connaître leur rythme.` : ''}</p>`;
+      ${waiting ? `${waiting} manga${waiting > 1 ? 's' : ''} n'ont pas encore assez de sorties pour connaître leur rythme.` : ''}</p>`);
 }
 
 // Clic sur un manga du planning : sa fiche dans la bibliothèque

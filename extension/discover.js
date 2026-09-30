@@ -141,10 +141,10 @@ function renderHero() {
     return;
   }
   heroIndex %= items.length;
-  hero.querySelector('.hero-slide').innerHTML = heroSlide(items[heroIndex]);
-  hero.querySelector('.hero-dots').innerHTML = items
+  setHTML(hero.querySelector('.hero-slide'), heroSlide(items[heroIndex]));
+  setHTML(hero.querySelector('.hero-dots'), items
     .map((_, i) => `<button class="${i === heroIndex ? 'active' : ''}" data-hero="${i}" aria-label="Recommandation ${i + 1}"></button>`)
-    .join('');
+    .join(''));
 }
 
 function startHeroTimer() {
@@ -183,24 +183,24 @@ async function renderDiscover() {
 
   if (discoverQuery) {
     if (!discoverResults) {
-      el.innerHTML = `<div class="search-grid">${'<div class="poster"><div class="poster-cover skel"></div><span class="skel skel-text"></span></div>'.repeat(12)}</div>`;
+      setHTML(el, `<div class="search-grid">${'<div class="poster"><div class="poster-cover skel"></div><span class="skel skel-text"></span></div>'.repeat(12)}</div>`);
       return;
     }
-    el.innerHTML = discoverResults.length
+    setHTML(el, discoverResults.length
       ? `<h2 class="search-title">${discoverResults.length} résultat${discoverResults.length > 1 ? 's' : ''} pour « ${escapeHtml(discoverQuery)} »</h2>
          <div class="search-grid">${discoverResults.map(poster).join('')}</div>`
-      : `<p class="empty">Aucun manga trouvé pour « ${escapeHtml(discoverQuery)} ».<br>Essaie le titre anglais ou le titre original.</p>`;
+      : `<p class="empty">Aucun manga trouvé pour « ${escapeHtml(discoverQuery)} ».<br>Essaie le titre anglais ou le titre original.</p>`);
     return;
   }
 
   if (!discoverCache) {
-    el.innerHTML = skeleton();
+    setHTML(el, skeleton());
     discoverLoading ??= loadDiscoverHome().catch(() => (discoverCache = { error: true }));
     await discoverLoading;
     if (discoverQuery) return; // une recherche a commencé entre-temps
   }
   if (discoverCache.error) {
-    el.innerHTML = '<p class="empty">AniList ne répond pas pour l’instant.<br>Réessaie dans quelques minutes.</p>';
+    setHTML(el, '<p class="empty">AniList ne répond pas pour l’instant.<br>Réessaie dans quelques minutes.</p>');
     discoverCache = null;
     discoverLoading = null;
     return;
@@ -209,7 +209,7 @@ async function renderDiscover() {
   const notTracked = (m) => !findTrackedMedia(scans, m);
   const { rows } = discoverCache;
   const recs = discoverCache.recs.map((r) => r.media).filter(notTracked);
-  el.innerHTML = `
+  setHTML(el, `
     <section class="hero" id="hero">
       <div class="hero-slide"></div>
       <div class="hero-dots"></div>
@@ -218,7 +218,7 @@ async function renderDiscover() {
     ${row('trending', 'Tendances du moment', '', rows.trending)}
     ${row('top', 'Les mieux notés', 'de tous les temps', rows.top)}
     ${row('manhwa', 'Manhwa populaires', '', rows.manhwa)}
-    ${row('fresh', 'Nouveautés populaires', 'sorties depuis l’an dernier', rows.fresh)}`;
+    ${row('fresh', 'Nouveautés populaires', 'sorties depuis l’an dernier', rows.fresh)}`);
   renderHero();
   startHeroTimer();
 }
@@ -239,7 +239,7 @@ function openMedia(media) {
   ].filter(([, v]) => v);
   const otherTitles = mediaTitles(media).filter((t) => t !== mediaTitle(media)).slice(0, 3);
 
-  $('#media-content').innerHTML = `
+  setHTML($('#media-content'), `
     <div class="md-banner ${media.bannerImage ? '' : 'is-cover'}" style="background-image:url('${escapeHtml(backdrop || '')}')"></div>
     <div class="md-head" data-media="${media.id}" style="${tint(media)}">
       <div class="md-cover">${coverImg(media, 'extraLarge')}</div>
@@ -254,7 +254,7 @@ function openMedia(media) {
       <dl class="md-facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>
       <p class="hero-genres">${(media.genres || []).map((g) => `<span>${escapeHtml(g)}</span>`).join('')}</p>
       <p class="md-desc">${escapeHtml(plainDescription(media.description, 2000)) || 'Pas de résumé disponible.'}</p>
-    </div>`;
+    </div>`);
   $('#media-dialog').showModal();
 }
 
@@ -294,7 +294,7 @@ async function addMedia(media, status) {
   searchingSite.add(scan.id);
   await save();
   render();
-  toast(`« ${scan.title} » ajouté ! Recherche du manga sur anime-sama…`);
+  toast(`« ${scan.title} » ajouté ! Recherche d’un site où le lire…`);
 }
 
 async function onDiscoverClick(e) {
@@ -342,7 +342,7 @@ browser.storage.onChanged.addListener((changes, area) => {
     searchingSite.delete(scan.id);
     toast(scan.url
       ? `✓ « ${scan.title} » trouvé sur ${siteName(scan.url)}`
-      : `« ${scan.title} » n'est pas sur anime-sama : ajoute le lien de ton site avec ✏️ dans la bibliothèque.`, 6000);
+      : `« ${scan.title} » ajouté : ajoute le lien de ton site de lecture avec ✏️ dans la bibliothèque.`, 6000);
   }
 });
 
@@ -370,7 +370,7 @@ $('#btn-import-anilist').addEventListener('click', async () => {
   await save();
   render();
   renderDiscover();
-  toast(`${added} mangas ajoutés, ${updated} mis à jour. Leurs sites sont cherchés sur anime-sama en arrière-plan.`, 6000);
+  toast(`${added} mangas ajoutés, ${updated} mis à jour. Leurs sites de lecture sont cherchés en arrière-plan.`, 6000);
 });
 
 // L'onglet a pu être ouvert (préférence retenue) avant le chargement de ce fichier

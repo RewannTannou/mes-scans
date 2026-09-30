@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Mes Scans",
-  "version": "2.5.0",
-  "description": "Regroupe tes scans et retient automatiquement le chapitre où tu en es.",
+  "version": "2.6.0",
+  "description": "Suis tes mangas, manhwas et webtoons sur tous tes sites de lecture : chapitre retenu automatiquement, nouveaux chapitres, planning et statistiques.",
   "icons": {
     "48": "icons/icon.svg",
     "96": "icons/icon-96.png"
@@ -13,29 +13,62 @@
     "default_icon": "icons/icon.svg"
   },
   "background": {
-    "scripts": ["shared.js", "sources.js", "catalog.js", "background.js"]
+    "scripts": [
+      "shared.js",
+      "sources.js",
+      "catalog.js",
+      "background.js"
+    ]
   },
-  "permissions": ["storage", "tabs", "activeTab", "scripting", "alarms", "notifications", "downloads", "menus"],
-  "host_permissions": ["*://*/*"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "alarms",
+    "notifications",
+    "downloads",
+    "menus"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
   "content_scripts": [
-    { "matches": ["*://*/*"], "js": ["shared.js", "content.js"], "run_at": "document_idle" }
+    {
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+        "shared.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
   ],
   "commands": {
     "chapter-next": {
-      "suggested_key": { "default": "Alt+Shift+Up" },
+      "suggested_key": {
+        "default": "Alt+Shift+Up"
+      },
       "description": "Chapitre suivant (+1) sur la page d'un scan suivi"
     },
     "chapter-prev": {
-      "suggested_key": { "default": "Alt+Shift+Down" },
+      "suggested_key": {
+        "default": "Alt+Shift+Down"
+      },
       "description": "Chapitre précédent (−1) sur la page d'un scan suivi"
     }
   },
   "browser_specific_settings": {
     "gecko": {
       "id": "mes-scans@groupscansite",
-      "update_url": "https://raw.githubusercontent.com/RewannTannou/mes-scans/main/updates.json",
       "strict_min_version": "142.0",
-      "data_collection_permissions": { "required": ["none"] }
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
-  }
+  },
+  "author": "Reeverrs"
 }

@@ -195,7 +195,7 @@ async function renderStats() {
 
   const tile = (value, label) => `<div class="tile"><b>${value}</b><span>${label}</span></div>`;
 
-  $('#stats-content').innerHTML = `
+  setHTML($('#stats-content'), `
     <div class="tiles">
       ${tile(dayTotal(history, dayKey(new Date())), "aujourd'hui")}
       ${tile(sum(lastDays(7)), '7 derniers jours')}
@@ -255,7 +255,7 @@ async function renderStats() {
           <b>${escapeHtml(name)}</b>
           <span>${escapeHtml(desc)}</span>
         </div>`).join('')}
-    </div>`;
+    </div>`);
 }
 
 // Info-bulle au survol des barres et des cases du calendrier

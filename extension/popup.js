@@ -125,7 +125,7 @@ async function showAddForm(scans, tab, skipTitleCheck = false) {
   const sameTitle = !skipTitleCheck && findByTitle(scans, title);
   if (sameTitle) return showTracked(scans, sameTitle, 'title', tab);
 
-  form.status.innerHTML = Object.entries(STATUSES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  setOptions(form.status, Object.entries(STATUSES).map(([k, v]) => [k, v.label]));
   form.title.value = title;
   form.chapter.value = detected ? detected.num : chapterFromText(info.title || tab.title) ?? (await readChapterFromPage(tab.id)) ?? 1;
   form.status.value = 'reading';
@@ -181,7 +181,7 @@ async function showReleases() {
   const byId = new Map(scans.map((s) => [s.id, s]));
   const unread = releases.filter((r) => byId.has(r.id) && isUnread(r, byId.get(r.id))).slice(0, 4);
   if (!unread.length) return;
-  $('#p-releases-list').innerHTML = unread
+  setHTML($('#p-releases-list'), unread
     .map((r, i) => {
       const scan = byId.get(r.id);
       return `
@@ -190,7 +190,7 @@ async function showReleases() {
           <span class="p-rel-ch">${escapeHtml(chaptersLabel(r))}</span>
         </button>`;
     })
-    .join('');
+    .join(''));
   $('#p-releases-list').onclick = (e) => {
     const btn = e.target.closest('[data-i]');
     if (!btn) return;

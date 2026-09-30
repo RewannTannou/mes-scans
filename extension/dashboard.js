@@ -36,16 +36,16 @@ function renderTabs() {
   const counts = { all: scans.length, new: scans.filter(hasNew).length, fav: scans.filter((s) => s.favorite).length };
   for (const s of scans) counts[s.status] = (counts[s.status] || 0) + 1;
   const tabs = [['all', 'Tous'], ['new', '🔴 Nouveautés'], ['fav', '⭐ Favoris'], ...Object.entries(STATUSES).map(([k, v]) => [k, v.label])];
-  $('#tabs').innerHTML = tabs
+  setHTML($('#tabs'), tabs
     .map(([key, label]) => `<button data-tab="${key}" class="${key === currentTab ? 'active' : ''}">${label}<span class="count">${counts[key] || 0}</span></button>`)
-    .join('');
+    .join(''));
 }
 
 function renderSiteFilter() {
   const select = $('#filter-site');
   const current = select.value;
   const sites = [...new Set(scans.flatMap((s) => scanLinks(s).map(siteName)).filter(Boolean))].sort();
-  select.innerHTML = '<option value="">Tous les sites</option>' + sites.map((s) => `<option>${escapeHtml(s)}</option>`).join('');
+  setOptions(select, [['', 'Tous les sites'], ...sites.map((s) => [s, s])]);
   select.value = sites.includes(current) ? current : '';
   $('#btn-rename-site').hidden = !select.value;
 }
@@ -56,7 +56,7 @@ function renderGenreFilter() {
   const select = $('#filter-genre');
   const current = select.value;
   const genres = [...new Set(scans.flatMap((s) => s.pub?.genres || []))].sort((a, b) => a.localeCompare(b));
-  select.innerHTML = '<option value="">Tous les genres</option>' + genres.map((g) => `<option>${escapeHtml(g)}</option>`).join('');
+  setOptions(select, [['', 'Tous les genres'], ...genres.map((g) => [g, g])]);
   select.value = genres.includes(current) ? current : '';
   select.hidden = !genres.length;
 }
@@ -158,7 +158,7 @@ function renderResume() {
     .sort((a, b) => b.lastRead.localeCompare(a.lastRead))
     .slice(0, 5);
   $('#resume').hidden = filtered || !recent.length;
-  $('#resume-row').innerHTML = recent
+  setHTML($('#resume-row'), recent
     .map((s) => {
       const unread = unreadCount(s);
       const thumb = s.cover
@@ -174,7 +174,7 @@ function renderResume() {
           </div>
         </article>`;
     })
-    .join('');
+    .join(''));
 }
 
 function render() {
@@ -183,7 +183,7 @@ function render() {
   renderGenreFilter();
   renderResume();
   const list = visibleScans();
-  $('#grid').innerHTML = list.map(renderCard).join('');
+  setHTML($('#grid'), list.map(renderCard).join(''));
   $('#empty').hidden = list.length > 0;
   if (typeof renderReadingExtras === 'function') renderReadingExtras(); // reading.js : suggestions, rattrapage
 }
@@ -252,7 +252,7 @@ $('#sort').addEventListener('change', render);
 
 const form = $('#form');
 const dialog = $('#dialog');
-form.status.innerHTML = Object.entries(STATUSES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+setOptions(form.status, Object.entries(STATUSES).map(([k, v]) => [k, v.label]));
 
 function openForm(scan = null) {
   editingId = scan ? scan.id : null;
@@ -269,9 +269,9 @@ function openForm(scan = null) {
   form.notes.value = scan?.notes || '';
   form.anilist.value = scan?.pub?.url || '';
   const hint = $('#anilist-hint');
-  hint.innerHTML = scan?.pub?.url
+  setHTML(hint, scan?.pub?.url
     ? `Trouvé : <a href="${escapeHtml(scan.pub.url)}" target="_blank">${escapeHtml(scan.pub.title || 'fiche AniList')}</a>. Si ce n'est pas le bon manga, colle ici le lien de la bonne fiche.`
-    : scan?.pub?.checkedAt ? 'Aucune fiche trouvée pour ce titre : colle le lien de la fiche AniList.' : '';
+    : scan?.pub?.checkedAt ? 'Aucune fiche trouvée pour ce titre : colle le lien de la fiche AniList.' : '');
   updateUrlHint();
   if (typeof loadVersions === 'function') loadVersions(scan); // reading.js : versions anime-sama
   dialog.showModal();
@@ -426,7 +426,7 @@ loadSettings().then((settings) => {
 $('#btn-rename-site').addEventListener('click', () => {
   const from = $('#filter-site').value;
   const to = prompt(`Nouvelle adresse du site « ${from} » :
-(ex : anime-sama.fr)`, from)?.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+(ex : mon-site-de-scans.fr)`, from)?.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   if (!to || to === from) return;
   renameHost(scans, from, to);
   save();
@@ -444,9 +444,9 @@ async function renderSiteHealth() {
   const used = new Set(scans.flatMap((s) => scanLinks(s).map(siteName)));
   const down = Object.entries(siteHealth).filter(([host, h]) => used.has(host) && h.failures >= 3);
   $('#site-health').hidden = !down.length;
-  $('#site-health').innerHTML = down
+  setHTML($('#site-health'), down
     .map(([host, h]) => `<p>⚠️ <b>${escapeHtml(host)}</b> ne répond plus ${h.lastOk ? `depuis ${timeAgo(h.lastOk).replace('il y a ', '')}` : 'depuis le début'} : ses nouveaux chapitres ne sont pas vérifiés. Le site est peut-être en panne ou a changé d'adresse (✏️ Changer le domaine).</p>`)
-    .join('');
+    .join(''));
 }
 browser.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.siteHealth) renderSiteHealth();

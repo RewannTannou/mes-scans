@@ -12,7 +12,7 @@ function renderSuggestions() {
   el.hidden = currentTab !== 'all' || !list.length;
   if (el.hidden) return;
   const shown = list.slice(0, 3);
-  el.innerHTML = `
+  setHTML(el, `
     <h2>💡 Suggestions</h2>
     ${shown.map(({ s, sug }) => `
       <div class="suggestion" data-id="${s.id}" data-key="${escapeHtml(sug.key)}" data-status="${sug.status}">
@@ -20,7 +20,7 @@ function renderSuggestions() {
         <button class="primary small-btn" data-sug="accept">${escapeHtml(sug.action)}</button>
         <button class="ghost small-btn" data-sug="dismiss" title="Ne plus proposer">Non merci</button>
       </div>`).join('')}
-    ${list.length > shown.length ? `<p class="muted-small">et ${list.length - shown.length} autre${list.length - shown.length > 1 ? 's' : ''}…</p>` : ''}`;
+    ${list.length > shown.length ? `<p class="muted-small">et ${list.length - shown.length} autre${list.length - shown.length > 1 ? 's' : ''}…</p>` : ''}`);
 }
 
 $('#suggestions').addEventListener('click', (e) => {
@@ -64,7 +64,7 @@ function renderCatchup() {
     const when = days <= 1 ? 'en un jour' : days < 14 ? `en ${days} jours` : days < 90 ? `en ${Math.round(days / 7)} semaines` : `en ${Math.round(days / 30)} mois`;
     eta = ` · à ton rythme (${Math.round(pace * 10) / 10} chapitres par jour), tu auras rattrapé ${when}`.replace('.', ',');
   }
-  el.innerHTML = `🔴 <b>${total} chapitre${total > 1 ? 's' : ''} à lire</b> sur ${behind.length} manga${behind.length > 1 ? 's' : ''} · ${readingTime(total)} de lecture${eta}`;
+  setHTML(el, `🔴 <b>${total} chapitre${total > 1 ? 's' : ''} à lire</b> sur ${behind.length} manga${behind.length > 1 ? 's' : ''} · ${readingTime(total)} de lecture${eta}`);
 }
 
 function renderReadingExtras() {
@@ -99,7 +99,7 @@ async function loadVersions(scan) {
   }
   if (versions.length < 2 || editingId !== scan.id) return; // rien à choisir, ou formulaire fermé entre-temps
   versionsFor = parts.catalogue;
-  select.innerHTML = versions.map((v) => `<option value="${escapeHtml(v.path)}">${escapeHtml(v.name)}</option>`).join('');
+  setOptions(select, versions.map((v) => [v.path, v.name]));
   select.value = versions.some((v) => v.path === parts.path) ? parts.path : versions[0].path;
   field.hidden = false;
 }

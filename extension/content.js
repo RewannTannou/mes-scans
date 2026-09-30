@@ -72,24 +72,27 @@ if (!window.__mesScansWatching) {
   function showResumeBanner(progress) {
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;';
+    // Shadow DOM fermé : les styles du site ne touchent pas le bandeau, et inversement
     const root = host.attachShadow({ mode: 'closed' });
-    root.innerHTML = `
-      <style>
+    const el = (tag, props) => Object.assign(document.createElement(tag), props);
+    const style = el('style', {
+      textContent: `
         .box { display:flex; align-items:center; gap:10px; padding:10px 12px 10px 16px; border-radius:12px;
                background:#181b22; color:#e8eaf0; border:1px solid #2c313c; box-shadow:0 10px 30px rgba(0,0,0,.5);
                font:600 14px/1.3 system-ui, sans-serif; }
         button { font:inherit; border:none; border-radius:8px; padding:7px 14px; cursor:pointer; }
         .go { background:#ff5c7a; color:#fff; }
-        .x { background:transparent; color:#8b92a3; padding:7px 9px; }
-      </style>
-      <div class="box">
-        <span>📖 Tu t'étais arrêté à ${Math.round(progress * 100)} % de ce chapitre</span>
-        <button class="go">Reprendre</button>
-        <button class="x" aria-label="Fermer">✕</button>
-      </div>`;
+        .x { background:transparent; color:#8b92a3; padding:7px 9px; }`,
+    });
+    const go = el('button', { className: 'go', textContent: 'Reprendre' });
+    const x = el('button', { className: 'x', textContent: '✕', ariaLabel: 'Fermer' });
+    const box = el('div', { className: 'box' });
+    box.append(el('span', { textContent: `📖 Tu t'étais arrêté à ${Math.round(progress * 100)} % de ce chapitre` }), go, x);
+    root.append(style, box);
+
     const close = () => host.remove();
-    root.querySelector('.x').addEventListener('click', close);
-    root.querySelector('.go').addEventListener('click', () => {
+    x.addEventListener('click', close);
+    go.addEventListener('click', () => {
       close();
       resumeAt(progress);
     });

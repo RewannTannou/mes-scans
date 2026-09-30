@@ -461,6 +461,23 @@ function suggestionFor(s) {
   return null;
 }
 
+// ---------- Insertion de HTML sûre ----------
+
+// Remplace le contenu d'un élément par du HTML construit par l'extension, après
+// nettoyage par DOMPurify (vendor/purify.min.js, version officielle non modifiée) :
+// aucun script ni gestionnaire d'événement venu d'un site ou d'AniList ne peut passer,
+// même si une valeur avait échappé à escapeHtml.
+function setHTML(element, html) {
+  element.replaceChildren(
+    DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true, ADD_ATTR: ['target', 'referrerpolicy', 'loading'] })
+  );
+}
+
+// Remplit une liste déroulante : options = [[valeur, libellé], …]
+function setOptions(select, options) {
+  select.replaceChildren(...options.map(([value, label]) => new Option(label, value)));
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

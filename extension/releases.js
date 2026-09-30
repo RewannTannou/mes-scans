@@ -91,10 +91,10 @@ function renderReleases() {
   document.querySelectorAll('#release-layout button').forEach((b) => b.classList.toggle('active', b.dataset.layout === layout));
 
   if (!visible.length) {
-    $('#releases').innerHTML = `
+    setHTML($('#releases'), `
       <p class="empty">${releases.length
         ? 'Tu as lu toutes les dernières sorties 🎉'
-        : "Aucune sortie détectée pour l'instant.<br>Les nouveaux chapitres de tes scans apparaîtront ici dès leur sortie (vérification toutes les heures)."}</p>`;
+        : "Aucune sortie détectée pour l'instant.<br>Les nouveaux chapitres de tes scans apparaîtront ici dès leur sortie (vérification toutes les heures)."}</p>`);
     return;
   }
 
@@ -106,7 +106,7 @@ function renderReleases() {
     groups.at(-1).items.push(item);
   }
 
-  $('#releases').innerHTML = groups
+  setHTML($('#releases'), groups
     .map(({ label, items }) => `
       <section class="rel-day">
         <h2>${escapeHtml(label)} <span class="muted-small">${items.length} sortie${items.length > 1 ? 's' : ''}</span></h2>
@@ -114,7 +114,7 @@ function renderReleases() {
           ${items.map(({ r, scan, index }) => releaseItem(r, scan, index)).join('')}
         </div>
       </section>`)
-    .join('');
+    .join(''));
 }
 
 // ---------- Actions ----------
