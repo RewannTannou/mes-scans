@@ -11,6 +11,7 @@
   <header class="topbar">
     <h1>📚 Mes Scans</h1>
     <div class="topbar-actions">
+      <button id="btn-theme" class="ghost" title="Thème : sombre">🌙</button>
       <button id="btn-stats" class="ghost">📊 Stats</button>
       <button id="btn-export" class="ghost" title="Télécharger une sauvegarde">Exporter</button>
       <label class="ghost button" title="Restaurer une sauvegarde">
@@ -23,6 +24,7 @@
   <nav class="views" id="views">
     <button data-view="library" class="active">📚 Bibliothèque</button>
     <button data-view="releases">🆕 Dernières sorties <span id="releases-count" class="view-count" hidden></span></button>
+    <button data-view="planning">🗓️ Planning</button>
     <button data-view="discover">🔍 Découvrir</button>
   </nav>
 
@@ -34,16 +36,20 @@
     <label class="toggle" title="Un fichier dans Téléchargements/MesScans chaque semaine"><input type="checkbox" id="backup"> 💾 Sauvegarde auto</label>
   </section>
 
+  <div id="site-health" class="site-health" hidden></div>
+
   <div id="view-library">
   <section class="toolbar">
     <input type="search" id="search" placeholder="Rechercher un titre…">
     <select id="filter-site"><option value="">Tous les sites</option></select>
+    <select id="filter-genre"><option value="">Tous les genres</option></select>
     <button id="btn-rename-site" class="ghost" hidden title="Le site a changé d'adresse ? Mets à jour tous ses liens">✏️ Changer le domaine</button>
     <select id="sort">
       <option value="lastRead">Lu récemment</option>
       <option value="title">Titre (A→Z)</option>
       <option value="added">Ajout récent</option>
       <option value="unread">Chapitres à lire</option>
+      <option value="rating">Ma note</option>
     </select>
   </section>
 
@@ -72,6 +78,11 @@
       <label class="toggle"><input type="checkbox" id="hide-read"> Masquer les chapitres déjà lus</label>
     </div>
     <div id="releases"></div>
+  </section>
+
+  <!-- Planning : chapitres attendus dans les 7 prochains jours -->
+  <section id="view-planning" hidden>
+    <div id="planning"></div>
   </section>
 
   <!-- Découvrir : recherche AniList, recommandations, tendances, import -->
@@ -112,6 +123,19 @@
           <select name="status"></select>
         </label>
       </div>
+      <div class="row">
+        <label>Ma note
+          <select name="rating">
+            <option value="">—</option>
+            <option>10</option><option>9</option><option>8</option><option>7</option><option>6</option>
+            <option>5</option><option>4</option><option>3</option><option>2</option><option>1</option>
+          </select>
+        </label>
+        <label class="check-label"><input type="checkbox" name="favorite"> ⭐ Favori</label>
+      </div>
+      <label>Notes perso
+        <textarea name="notes" rows="2" placeholder="Où tu en es dans l'histoire, un avis, un rappel…"></textarea>
+      </label>
       <label id="version-field" hidden>Version sur anime-sama
         <select name="version"></select>
         <small class="hint warn">Certaines « versions » sont des histoires à part (Side Story, suite…) : ajoute-les plutôt comme un scan séparé.</small>
@@ -148,5 +172,6 @@
   <script src="releases.js"></script>
   <script src="discover.js"></script>
   <script src="reading.js"></script>
+  <script src="planning.js"></script>
 </body>
 </html>

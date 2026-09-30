@@ -24,16 +24,19 @@ function hasSource(scan) {
 }
 
 // Plus grand chapitre disponible sur l'ensemble des sites du scan :
-// { num, link } (link = le site où il est sorti), ou null
-async function fetchLatestChapter(scan) {
+// { num, link } (link = le site où il est sorti), ou null.
+// report(link, ok) : appelé pour chaque site interrogé (état de santé des sites).
+async function fetchLatestChapter(scan, report = () => {}) {
   let best = null;
   for (const link of scanLinks(scan)) {
     const source = sourceForLink(link);
     if (!source) continue;
     try {
       const num = await source.latest(link, scan);
+      report(link, num !== null);
       if (num !== null && (best === null || num > best.num)) best = { num, link };
     } catch (err) {
+      report(link, false);
       console.warn(`${source.name} : vérification impossible pour ${siteName(link)}`, err);
     }
   }
@@ -73,7 +76,7 @@ async function chapterListLatest(link) {
 // Les sites de scans affichent souvent l'état de l'anime, pas celui du manga :
 // on demande donc à AniList (base de données manga, API gratuite sans compte).
 
-const ANILIST_FIELDS = 'id status chapters siteUrl title { romaji english native } synonyms coverImage { large }';
+const ANILIST_FIELDS = 'id status chapters siteUrl genres title { romaji english native } synonyms coverImage { large }';
 
 async function anilist(query, variables) {
   const res = await fetch('https://graphql.anilist.co', {
@@ -104,6 +107,7 @@ async function fetchPublication(scan) {
     url: media.siteUrl,
     title: media.title.english || media.title.romaji,
     cover: media.coverImage?.large,
+    genres: media.genres || [],
     checkedAt: new Date().toISOString(),
   };
 }

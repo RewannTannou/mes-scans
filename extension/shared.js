@@ -23,7 +23,29 @@ function saveScans(scans) {
   return browser.storage.local.set({ [STORAGE_KEY]: scans });
 }
 
-var DEFAULT_SETTINGS = { notify: true, backup: true };
+var DEFAULT_SETTINGS = { notify: true, backup: true, theme: 'dark' };
+
+// Thème des pages de l'extension : 'dark', 'light' ou 'auto' (comme le système).
+// Gardé aussi dans le localStorage de la page pour s'appliquer avant le premier affichage.
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem('mes-scans:theme', theme);
+  } catch {
+    // stockage indisponible : le thème sera appliqué un peu plus tard, au chargement des réglages
+  }
+}
+
+// Pages de l'extension uniquement (ce fichier est aussi chargé dans les sites visités)
+if (typeof location !== 'undefined' && location.protocol === 'moz-extension:' && typeof document !== 'undefined') {
+  try {
+    const theme = localStorage.getItem('mes-scans:theme');
+    if (theme) document.documentElement.dataset.theme = theme;
+  } catch {
+    // pas de thème mémorisé
+  }
+  loadSettings().then((s) => applyTheme(s.theme)).catch(() => {});
+}
 
 async function loadSettings() {
   const { settings } = await browser.storage.local.get('settings');
@@ -304,6 +326,69 @@ function cleanTitle(raw, url) {
   const segs = new URL(url).pathname.split('/').filter((s) => s && !ignore.test(s) && !/\d+$/.test(s));
   const slug = segs.pop() || '';
   return slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ---------- Sorties (journal releases) ----------
+
+// Sortie encore à lire : tu n'as pas atteint ce chapitre
+function isUnread(r, scan) {
+  return scan.chapter < r.to;
+}
+
+// Chapitre à ouvrir : le prochain que tu n'as pas lu (sans dépasser la sortie),
+// sur le site où le chapitre est sorti s'il fait toujours partie du scan
+function releaseUrl(r, scan) {
+  const link = scanLinks(scan).includes(r.link) ? r.link : scan.url;
+  if (!link.includes('{ch}')) return link;
+  const next = isUnread(r, scan) ? Math.min(r.to, Math.floor(scan.chapter) + 1) : r.to;
+  return link.replace('{ch}', formatChapter(next));
+}
+
+function chaptersLabel(r) {
+  return r.to - r.from > 1
+    ? `Chapitres ${formatChapter(Math.floor(r.from) + 1)} à ${formatChapter(r.to)}`
+    : `Chapitre ${formatChapter(r.to)}`;
+}
+
+// ---------- Rythme de sortie (calendrier) ----------
+
+var WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+var MIN_RELEASES_FOR_RHYTHM = 3;
+
+// Estime le rythme de sortie d'un scan à partir de ses sorties enregistrées :
+// { every: jours entre deux sorties, weekday: jour habituel (séries hebdomadaires)
+//   ou null, next: date ISO du prochain chapitre estimé, label: « chaque jeudi » }
+// ou null s'il n'y a pas assez de sorties ou qu'elles sont trop irrégulières.
+function releaseRhythm(releases, scanId) {
+  const dates = releases
+    .filter((r) => r.id === scanId)
+    .map((r) => new Date(r.at))
+    .sort((a, b) => a - b);
+  if (dates.length < MIN_RELEASES_FOR_RHYTHM) return null;
+
+  const gaps = dates.slice(1).map((d, i) => (d - dates[i]) / 86400000).sort((a, b) => a - b);
+  const every = gaps[Math.floor(gaps.length / 2)]; // médiane : insensible à une semaine de pause
+  if (every < 0.5 || every > 60) return null;
+
+  const last = dates.at(-1);
+  if (every >= 5.5 && every <= 8.5) {
+    // Hebdomadaire : jour de la semaine le plus fréquent, prochaine occurrence après la dernière sortie
+    const counts = {};
+    for (const d of dates) counts[d.getDay()] = (counts[d.getDay()] || 0) + 1;
+    const weekday = Number(Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]);
+    const next = new Date(last);
+    next.setHours(12, 0, 0, 0);
+    do next.setDate(next.getDate() + 1);
+    while (next.getDay() !== weekday);
+    return { every: 7, weekday, next: next.toISOString(), label: `chaque ${WEEKDAYS[weekday]}` };
+  }
+  const days = Math.round(every);
+  return {
+    every,
+    weekday: null,
+    next: new Date(last.getTime() + every * 86400000).toISOString(),
+    label: days <= 1 ? 'tous les jours' : `tous les ${days} jours environ`,
+  };
 }
 
 // ---------- Progression dans un chapitre ----------

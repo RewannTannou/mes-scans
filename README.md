@@ -52,6 +52,10 @@ Plus besoin de noter tes chapitres ni de passer d'un site à l'autre pour savoir
 
 ### Nouveaux chapitres
 - Vérification **toutes les heures** du dernier chapitre disponible de chaque scan.
+- Onglet **🗓️ Planning** : les chapitres attendus dans les 7 prochains jours, d'après le rythme de chaque série (« chaque jeudi », « tous les 3 jours »), et les séries en retard. Il faut 3 sorties enregistrées pour connaître le rythme d'un manga.
+- **Dernières sorties dans le popup** : les 4 dernières sorties non lues, à ouvrir d'un clic.
+- **Résumé de la semaine** en notification : chapitres sortis et chapitres lus.
+- **État de santé des sites** : un site qui ne répond plus (panne, changement d'adresse) est signalé dans la bibliothèque.
 - Onglet **🆕 Dernières sorties** : toutes les sorties détectées, regroupées par jour (aujourd'hui, hier…), en **liste** ou en **catalogue** de couvertures. Chaque sortie indique si tu l'as déjà lue, et « Lire » ouvre directement le prochain chapitre à lire. Option pour masquer les chapitres déjà lus.
 - Pastille **« 201 à lire »** sur les cartes, compteur sur l'icône de l'extension.
 - **Notifications** Firefox quand un chapitre sort pour un scan « En cours » (désactivables).
@@ -68,6 +72,12 @@ Plus besoin de noter tes chapitres ni de passer d'un site à l'autre pour savoir
 ### Statistiques
 - Chapitres lus aujourd'hui, sur 7 et 30 jours, jours de lecture d'affilée, record.
 - Graphique des 30 derniers jours et mangas les plus lus.
+- **Calendrier de l'année** (une case par jour), **genres** les plus lus et **succès** à débloquer (1 000 chapitres, 7 jours d'affilée, 5 séries terminées…).
+
+### Organisation
+- **Favoris** ⭐ (onglet dédié), **note sur 10** et **notes perso** sur chaque manga.
+- **Genres** automatiques (AniList) avec un filtre par genre, tri par note.
+- **Thème sombre, clair ou automatique** (comme le système), bouton en haut de la bibliothèque.
 
 ### Sauvegarde
 - **Export / import** d'un fichier de sauvegarde (scans + historique).
@@ -230,6 +240,7 @@ GroupScanSite/
 │   ├── releases.js       Onglet « Dernières sorties » (liste / catalogue)
 │   ├── discover.js       Onglet « Découvrir »
 │   ├── reading.js        Suggestions de statut, rattrapage, versions anime-sama
+│   ├── planning.js       Onglet « Planning » (sorties attendues)
 │   ├── style.css         Styles communs (bibliothèque et popup)
 │   └── icons/            Icônes
 ├── docs/

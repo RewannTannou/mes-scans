@@ -32,3 +32,13 @@ button.small { font-size: .8rem; padding: 6px 10px; }
 
 footer { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 footer button { width: 100%; }
+
+.p-releases { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+#p-releases-list { display: flex; flex-direction: column; gap: 4px; }
+.p-release {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%;
+  padding: 7px 10px; background: var(--panel-2); border: 1px solid transparent; text-align: left;
+}
+.p-release:hover { border-color: var(--accent); }
+.p-rel-title { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.p-rel-ch { font-size: .75rem; color: var(--accent-2); white-space: nowrap; flex-shrink: 0; }

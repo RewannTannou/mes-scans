@@ -103,6 +103,7 @@ function scanFromMedia(media, { status = 'plan', chapter = 0 } = {}) {
       title: mediaTitle(media),
       cover: media.coverImage?.large,
       titles: mediaTitles(media), // tous les titres connus : servent à trouver le manga sur les sites
+      genres: media.genres || [],
       checkedAt: now,
     },
   };

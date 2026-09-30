@@ -33,9 +33,9 @@ function timeAgo(iso) {
 const hasNew = (s) => unreadCount(s) > 0 && s.status !== 'done' && s.status !== 'dropped';
 
 function renderTabs() {
-  const counts = { all: scans.length, new: scans.filter(hasNew).length };
+  const counts = { all: scans.length, new: scans.filter(hasNew).length, fav: scans.filter((s) => s.favorite).length };
   for (const s of scans) counts[s.status] = (counts[s.status] || 0) + 1;
-  const tabs = [['all', 'Tous'], ['new', '🔴 Nouveautés'], ...Object.entries(STATUSES).map(([k, v]) => [k, v.label])];
+  const tabs = [['all', 'Tous'], ['new', '🔴 Nouveautés'], ['fav', '⭐ Favoris'], ...Object.entries(STATUSES).map(([k, v]) => [k, v.label])];
   $('#tabs').innerHTML = tabs
     .map(([key, label]) => `<button data-tab="${key}" class="${key === currentTab ? 'active' : ''}">${label}<span class="count">${counts[key] || 0}</span></button>`)
     .join('');
@@ -52,18 +52,30 @@ function renderSiteFilter() {
 
 const onSite = (s, site) => scanLinks(s).some((l) => siteName(l) === site);
 
+function renderGenreFilter() {
+  const select = $('#filter-genre');
+  const current = select.value;
+  const genres = [...new Set(scans.flatMap((s) => s.pub?.genres || []))].sort((a, b) => a.localeCompare(b));
+  select.innerHTML = '<option value="">Tous les genres</option>' + genres.map((g) => `<option>${escapeHtml(g)}</option>`).join('');
+  select.value = genres.includes(current) ? current : '';
+  select.hidden = !genres.length;
+}
+
 function visibleScans() {
   const q = $('#search').value.trim().toLowerCase();
   const site = $('#filter-site').value;
+  const genre = $('#filter-genre').value;
   const sort = $('#sort').value;
   return scans
-    .filter((s) => currentTab === 'all' || (currentTab === 'new' ? hasNew(s) : s.status === currentTab))
+    .filter((s) => currentTab === 'all' || (currentTab === 'new' ? hasNew(s) : currentTab === 'fav' ? s.favorite : s.status === currentTab))
+    .filter((s) => !genre || (s.pub?.genres || []).includes(genre))
     .filter((s) => !q || s.title.toLowerCase().includes(q))
     .filter((s) => !site || onSite(s, site))
     .sort((a, b) => {
       if (sort === 'title') return a.title.localeCompare(b.title, 'fr');
       if (sort === 'added') return b.createdAt.localeCompare(a.createdAt);
       if (sort === 'unread') return (unreadCount(b) ?? -1) - (unreadCount(a) ?? -1);
+      if (sort === 'rating') return (b.rating || 0) - (a.rating || 0) || Number(!!b.favorite) - Number(!!a.favorite);
       return (b.lastRead || '').localeCompare(a.lastRead || '');
     });
 }
@@ -117,10 +129,12 @@ function renderCard(s) {
         <span class="status" style="color:${st.color}">${st.label}</span>
         ${unreadPill}
         <button class="edit" data-action="edit" title="Modifier">✏️</button>
+        <button class="fav ${s.favorite ? 'on' : ''}" data-action="fav" title="${s.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}">★</button>
       </div>
       <div class="body">
         <h3 class="title" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3>
         ${pubLine(s)}
+        ${s.rating || s.notes ? `<p class="my-line">${s.rating ? `<span class="my-rating">★ ${s.rating}/10</span>` : ''}${s.notes ? `<span class="my-notes" title="${escapeHtml(s.notes)}">📝 ${escapeHtml(s.notes)}</span>` : ''}</p>` : ''}
         <div class="meta">
           <span class="site" title="${escapeHtml(sitesTitle)}">${site ? escapeHtml(site) : s.sourceSearchedAt ? 'aucun site' : 'recherche du site…'}${others.length ? ` <b>+${others.length}</b>` : ''}</span>
           <span>${timeAgo(s.lastRead)}</span>
@@ -166,6 +180,7 @@ function renderResume() {
 function render() {
   renderTabs();
   renderSiteFilter();
+  renderGenreFilter();
   renderResume();
   const list = visibleScans();
   $('#grid').innerHTML = list.map(renderCard).join('');
@@ -213,6 +228,9 @@ const onCardClick = (e) => {
     case 'edit':
       openForm(s);
       break;
+    case 'fav':
+      update(id, { favorite: !s.favorite });
+      break;
   }
 };
 $('#grid').addEventListener('click', onCardClick);
@@ -227,6 +245,7 @@ $('#tabs').addEventListener('click', (e) => {
 
 $('#search').addEventListener('input', render);
 $('#filter-site').addEventListener('change', render);
+$('#filter-genre').addEventListener('change', render);
 $('#sort').addEventListener('change', render);
 
 // ---------- Formulaire ----------
@@ -245,6 +264,9 @@ function openForm(scan = null) {
   form.chapter.value = scan ? scan.chapter : 1;
   form.status.value = scan ? scan.status : 'reading';
   form.cover.value = scan ? scan.cover : '';
+  form.rating.value = scan?.rating ? String(scan.rating) : '';
+  form.favorite.checked = !!scan?.favorite;
+  form.notes.value = scan?.notes || '';
   form.anilist.value = scan?.pub?.url || '';
   const hint = $('#anilist-hint');
   hint.innerHTML = scan?.pub?.url
@@ -302,6 +324,9 @@ form.addEventListener('submit', (e) => {
     chapter: parseFloat(form.chapter.value) || 0,
     status: form.status.value,
     cover: form.cover.value.trim(),
+    rating: Number(form.rating.value) || null,
+    favorite: form.favorite.checked,
+    notes: form.notes.value.trim(),
   };
   // Fiche AniList changée à la main : on la recharge (l'extension s'en occupe)
   const anilistId = anilistIdFromUrl(form.anilist.value.trim());
@@ -410,8 +435,45 @@ $('#btn-rename-site').addEventListener('click', () => {
 });
 renderLastCheck();
 
+// ---------- État de santé des sites ----------
+// Un site qui échoue à 3 vérifications d'affilée est signalé (en panne,
+// protection anti-robots, changement d'adresse…).
+
+async function renderSiteHealth() {
+  const { siteHealth = {} } = await browser.storage.local.get('siteHealth');
+  const used = new Set(scans.flatMap((s) => scanLinks(s).map(siteName)));
+  const down = Object.entries(siteHealth).filter(([host, h]) => used.has(host) && h.failures >= 3);
+  $('#site-health').hidden = !down.length;
+  $('#site-health').innerHTML = down
+    .map(([host, h]) => `<p>⚠️ <b>${escapeHtml(host)}</b> ne répond plus ${h.lastOk ? `depuis ${timeAgo(h.lastOk).replace('il y a ', '')}` : 'depuis le début'} : ses nouveaux chapitres ne sont pas vérifiés. Le site est peut-être en panne ou a changé d'adresse (✏️ Changer le domaine).</p>`)
+    .join('');
+}
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.siteHealth) renderSiteHealth();
+});
+
+// ---------- Thème ----------
+
+const THEMES = { dark: ['🌙', 'sombre'], light: ['☀️', 'clair'], auto: ['🖥️', 'comme le système'] };
+
+function showThemeButton(theme) {
+  $('#btn-theme').textContent = THEMES[theme][0];
+  $('#btn-theme').title = `Thème : ${THEMES[theme][1]} (cliquer pour changer)`;
+}
+
+$('#btn-theme').addEventListener('click', async () => {
+  const settings = await loadSettings();
+  const order = Object.keys(THEMES);
+  settings.theme = order[(order.indexOf(settings.theme) + 1) % order.length];
+  applyTheme(settings.theme);
+  showThemeButton(settings.theme);
+  saveSettings(settings);
+});
+loadSettings().then((s) => showThemeButton(s.theme));
+
 // Promesse utilisée par releases.js pour attendre la liste des scans
 const scansReady = loadScans().then((data) => {
   scans = data;
   render();
+  renderSiteHealth();
 });

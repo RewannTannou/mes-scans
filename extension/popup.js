@@ -173,3 +173,32 @@ async function showAddForm(scans, tab, skipTitleCheck = false) {
   if (hit) showTracked(scans, hit.scan, hit.num !== null ? 'auto' : 'manual', tab);
   else showAddForm(scans, tab);
 })();
+
+// ---------- Dernières sorties non lues ----------
+
+async function showReleases() {
+  const [{ releases = [] }, scans] = await Promise.all([browser.storage.local.get('releases'), loadScans()]);
+  const byId = new Map(scans.map((s) => [s.id, s]));
+  const unread = releases.filter((r) => byId.has(r.id) && isUnread(r, byId.get(r.id))).slice(0, 4);
+  if (!unread.length) return;
+  $('#p-releases-list').innerHTML = unread
+    .map((r, i) => {
+      const scan = byId.get(r.id);
+      return `
+        <button class="p-release" data-i="${i}" title="Lire ${escapeHtml(scan.title)}">
+          <span class="p-rel-title">${escapeHtml(scan.title)}</span>
+          <span class="p-rel-ch">${escapeHtml(chaptersLabel(r))}</span>
+        </button>`;
+    })
+    .join('');
+  $('#p-releases-list').onclick = (e) => {
+    const btn = e.target.closest('[data-i]');
+    if (!btn) return;
+    const r = unread[Number(btn.dataset.i)];
+    browser.tabs.create({ url: releaseUrl(r, byId.get(r.id)) });
+    window.close();
+  };
+  $('#p-releases').hidden = false;
+}
+
+showReleases();

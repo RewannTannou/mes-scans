@@ -93,16 +93,36 @@ function checkNewChapters() {
 }
 
 async function runCheck() {
+  const outcomes = {}; // site -> a répondu au moins une fois pendant cette vérification ?
+  const report = (link, ok) => {
+    const host = siteName(link);
+    outcomes[host] = outcomes[host] || ok;
+  };
   for (const scan of await loadScans()) {
     if (scan.status === 'done' || scan.status === 'dropped' || !hasSource(scan)) continue;
     try {
-      const latest = await fetchLatestChapter(scan);
+      const latest = await fetchLatestChapter(scan, report);
       if (latest !== null) await enqueue(() => updateLatest(scan.id, latest.num, latest.link));
     } catch (err) {
       console.warn(`Vérification impossible pour « ${scan.title} »`, err);
     }
   }
+  await recordSiteHealth(outcomes);
   await browser.storage.local.set({ lastCheck: new Date().toISOString() });
+}
+
+// État de santé des sites : siteHealth = { 'phenix-scans.co': { lastOk, lastFail, failures }, … }
+// failures = vérifications ratées d'affilée (la bibliothèque prévient à partir de 3).
+async function recordSiteHealth(outcomes) {
+  if (!Object.keys(outcomes).length) return;
+  const { siteHealth = {} } = await browser.storage.local.get('siteHealth');
+  const now = new Date().toISOString();
+  for (const [host, ok] of Object.entries(outcomes)) {
+    const h = (siteHealth[host] ??= { failures: 0 });
+    if (ok) Object.assign(h, { lastOk: now, failures: 0 });
+    else Object.assign(h, { lastFail: now, failures: h.failures + 1 });
+  }
+  await browser.storage.local.set({ siteHealth });
 }
 
 // link : le lien (site) où le chapitre est sorti
@@ -185,6 +205,7 @@ let refreshingPub = null;
 
 function needsPublication(scan) {
   if (!scan.pub?.checkedAt) return true;
+  if (scan.pub.id && !scan.pub.genres) return true; // fiches d'avant l'ajout des genres
   return Date.now() - new Date(scan.pub.checkedAt) > PUB_REFRESH_DAYS * 86400000;
 }
 
@@ -416,3 +437,50 @@ async function addScanFromPage(url, rawTitle) {
 function notify(title, message) {
   browser.notifications.create({ type: 'basic', iconUrl: 'icons/icon-96.png', title, message });
 }
+
+// ---------- Résumé de la semaine ----------
+// Une fois par semaine, une notification résume les sorties et tes lectures.
+// (La première fois, on ne fait que noter la date : le résumé arrive 7 jours après.)
+
+const DIGEST_EVERY_DAYS = 7;
+
+async function weeklyDigestIfNeeded() {
+  const { lastDigest, releases = [], history = {} } = await browser.storage.local.get(['lastDigest', 'releases', 'history']);
+  const now = Date.now();
+  if (!lastDigest) {
+    await browser.storage.local.set({ lastDigest: new Date(now).toISOString() });
+    return;
+  }
+  if (now - new Date(lastDigest) < DIGEST_EVERY_DAYS * 86400000) return;
+  await browser.storage.local.set({ lastDigest: new Date(now).toISOString() });
+  if (!(await loadSettings()).notify) return;
+
+  const since = now - DIGEST_EVERY_DAYS * 86400000;
+  const recent = releases.filter((r) => new Date(r.at) >= since);
+  const released = recent.reduce((a, r) => a + Math.max(1, Math.round(r.to - r.from)), 0);
+  const mangas = new Set(recent.map((r) => r.id)).size;
+  let read = 0;
+  for (let i = 0; i < DIGEST_EVERY_DAYS; i++) {
+    const day = new Date(now - i * 86400000).toLocaleDateString('sv');
+    read += Object.values(history[day] || {}).reduce((a, b) => a + b, 0);
+  }
+  if (!released && !read) return;
+  const parts = [];
+  if (released) parts.push(`${released} nouveau${released > 1 ? 'x' : ''} chapitre${released > 1 ? 's' : ''} sur ${mangas} manga${mangas > 1 ? 's' : ''}`);
+  if (read) parts.push(`tu en as lu ${read}${read >= 20 ? ' 🔥' : ''}`);
+  browser.notifications.create('digest', {
+    type: 'basic',
+    iconUrl: 'icons/icon-96.png',
+    title: 'Ta semaine de lecture',
+    message: `${parts.join(' · ')}.`,
+  });
+}
+
+browser.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'check-new-chapters') weeklyDigestIfNeeded();
+});
+browser.notifications.onClicked.addListener((id) => {
+  if (id !== 'digest') return;
+  openDashboard();
+  browser.notifications.clear(id);
+});

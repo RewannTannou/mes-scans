@@ -78,6 +78,99 @@ function barChart(days, values) {
     </div>`;
 }
 
+// Plus longue série de jours consécutifs avec au moins un chapitre lu
+function bestStreak(history) {
+  const days = Object.keys(history).filter((k) => dayTotal(history, k) > 0).sort();
+  let best = 0;
+  let run = 0;
+  let prev = null;
+  for (const key of days) {
+    const d = new Date(`${key}T12:00:00`);
+    run = prev && Math.round((d - prev) / 86400000) === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = d;
+  }
+  return best;
+}
+
+// Calendrier de l'année (façon GitHub) : une case par jour, une colonne par semaine.
+// Une seule teinte, de plus en plus soutenue selon le nombre de chapitres lus.
+function yearHeatmap(history) {
+  const cell = 12;
+  const gap = 3;
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - 364);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // commence un lundi
+  const values = [];
+  for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) values.push({ key: dayKey(d), n: dayTotal(history, dayKey(d)) });
+  const max = Math.max(1, ...values.map((v) => v.n));
+  const level = (n) => (n === 0 ? 0 : Math.min(4, Math.ceil((n / max) * 4)));
+  const weeks = Math.ceil(values.length / 7);
+  const left = 26;
+  const top = 16;
+  let months = '';
+  let lastMonth = -1;
+  let lastLabelWeek = -10; // un nom de mois au plus toutes les 3 semaines, pour qu'ils ne se chevauchent pas
+  const cells = values
+    .map((v, i) => {
+      const week = Math.floor(i / 7);
+      const x = left + week * (cell + gap);
+      const y = top + (i % 7) * (cell + gap);
+      const month = new Date(`${v.key}T12:00:00`).getMonth();
+      if (i % 7 === 0 && month !== lastMonth) {
+        lastMonth = month;
+        if (week - lastLabelWeek < 3) return rect();
+        lastLabelWeek = week;
+        months += `<text class="tick" x="${x}" y="10">${new Date(`${v.key}T12:00:00`).toLocaleDateString('fr-FR', { month: 'short' })}</text>`;
+      }
+      return rect();
+      function rect() {
+        const label = `${formatDay(v.key, { weekday: 'short', day: 'numeric', month: 'short' })} : ${v.n} chapitre${v.n > 1 ? 's' : ''}`;
+        return `<rect class="hm l${level(v.n)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3" data-tip="${escapeHtml(label)}"/>`;
+      }
+    })
+    .join('');
+  const width = left + weeks * (cell + gap);
+  const height = top + 7 * (cell + gap);
+  const dayLabels = ['lun', 'mer', 'ven'].map((d, i) => `<text class="tick" x="0" y="${top + (i * 2) * (cell + gap) + 10}">${d}</text>`).join('');
+  return `
+    <div class="chart-wrap heatmap-wrap">
+      <svg viewBox="0 0 ${width} ${height}" class="chart heatmap" role="img" aria-label="Chapitres lus chaque jour sur les 12 derniers mois">${months}${dayLabels}${cells}</svg>
+      <div class="chart-tip" hidden></div>
+      <p class="hm-legend">Moins ${[0, 1, 2, 3, 4].map((l) => `<span class="hm-swatch l${l}"></span>`).join('')} Plus</p>
+    </div>`;
+}
+
+// Succès : [icône, nom, description, débloqué ?]
+function achievements(history) {
+  const totalChapters = scans.reduce((a, s) => a + Math.floor(s.chapter || 0), 0);
+  const done = scans.filter((s) => s.status === 'done').length;
+  const sites = new Set(scans.flatMap((s) => scanLinks(s).map(siteName)).filter(Boolean)).size;
+  const upToDate = scans.filter((s) => s.status === 'reading' && unreadCount(s) === 0).length;
+  const bestDay = Math.max(0, ...Object.keys(history).map((k) => dayTotal(history, k)));
+  const favorites = scans.filter((s) => s.favorite).length;
+  return [
+    ['📖', 'Lecteur', '100 chapitres lus', totalChapters >= 100],
+    ['📚', 'Dévoreur', '1 000 chapitres lus', totalChapters >= 1000],
+    ['🏆', 'Légende', '5 000 chapitres lus', totalChapters >= 5000],
+    ['🏛️', 'Bibliothécaire', '20 mangas suivis', scans.length >= 20],
+    ['✅', 'Finisseur', '5 séries terminées', done >= 5],
+    ['🔥', 'Assidu', '7 jours de lecture d’affilée', bestStreak(history) >= 7],
+    ['⚡', 'Marathon', '30 chapitres en un jour', bestDay >= 30],
+    ['🧭', 'Explorateur', 'Lire sur 3 sites différents', sites >= 3],
+    ['🎯', 'À jour', '5 séries en cours sans retard', upToDate >= 5],
+    ['⭐', 'Coups de cœur', '5 favoris', favorites >= 5],
+  ];
+}
+
+// Chapitres lus par genre (d'après les genres AniList de tes mangas)
+function genreBreakdown() {
+  const perGenre = {};
+  for (const s of scans) for (const g of s.pub?.genres || []) perGenre[g] = (perGenre[g] || 0) + Math.floor(s.chapter || 0);
+  return Object.entries(perGenre).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
+}
+
 async function renderStats() {
   const { history = {} } = await browser.storage.local.get('history');
   const byId = new Map(scans.map((s) => [s.id, s]));
@@ -97,6 +190,8 @@ async function renderStats() {
     .map(([k, v]) => [v.label, scans.filter((s) => s.status === k).length])
     .filter(([, n]) => n);
   const totalChapters = scans.reduce((a, s) => a + Math.floor(s.chapter || 0), 0);
+  const genres = genreBreakdown();
+  const unlocked = achievements(history);
 
   const tile = (value, label) => `<div class="tile"><b>${value}</b><span>${label}</span></div>`;
 
@@ -136,18 +231,39 @@ async function renderStats() {
       ${tile(totalChapters.toLocaleString('fr-FR'), 'chapitres lus au total')}
       ${best ? tile(dayTotal(history, best), `record, le ${formatDay(best, { day: 'numeric', month: 'long' })}`) : ''}
       ${statusCounts.map(([label, n]) => tile(n, label.toLowerCase())).join('')}
+    </div>
+
+    <h3>Ton année de lecture <span class="muted-small">— meilleure série : ${bestStreak(history)} jour${bestStreak(history) > 1 ? 's' : ''} d'affilée</span></h3>
+    ${yearHeatmap(history)}
+
+    ${genres.length ? `
+      <h3>Tes genres <span class="muted-small">— chapitres lus par genre</span></h3>
+      <ol class="top-list">
+        ${genres.map(([g, n]) => `
+          <li>
+            <span class="top-title">${escapeHtml(g)}</span>
+            <span class="top-bar"><span style="width:${(n / genres[0][1]) * 100}%"></span></span>
+            <span class="top-n">${n.toLocaleString('fr-FR')}</span>
+          </li>`).join('')}
+      </ol>` : ''}
+
+    <h3>Succès <span class="muted-small">— ${unlocked.filter((a) => a[3]).length} / ${unlocked.length} débloqués</span></h3>
+    <div class="badges">
+      ${unlocked.map(([icon, name, desc, ok]) => `
+        <div class="badge ${ok ? 'on' : ''}" title="${escapeHtml(desc)}">
+          <span class="badge-icon">${icon}</span>
+          <b>${escapeHtml(name)}</b>
+          <span>${escapeHtml(desc)}</span>
+        </div>`).join('')}
     </div>`;
 }
 
-// Info-bulle au survol des barres
+// Info-bulle au survol des barres et des cases du calendrier
 $('#stats-content').addEventListener('mousemove', (e) => {
-  const col = e.target.closest('.col');
-  const tip = $('#stats-content .chart-tip');
-  if (!tip) return;
-  if (!col) {
-    tip.hidden = true;
-    return;
-  }
+  const col = e.target.closest('[data-tip]');
+  $('#stats-content').querySelectorAll('.chart-tip').forEach((t) => (t.hidden = true));
+  const tip = col?.closest('.chart-wrap')?.querySelector('.chart-tip');
+  if (!col || !tip) return;
   const wrap = tip.parentElement.getBoundingClientRect();
   tip.textContent = col.dataset.tip;
   tip.hidden = false;
@@ -157,8 +273,7 @@ $('#stats-content').addEventListener('mousemove', (e) => {
   $('#stats-content').querySelectorAll('.col').forEach((c) => c.classList.toggle('active', c === col));
 });
 $('#stats-content').addEventListener('mouseleave', () => {
-  const tip = $('#stats-content .chart-tip');
-  if (tip) tip.hidden = true;
+  $('#stats-content').querySelectorAll('.chart-tip').forEach((t) => (t.hidden = true));
 });
 
 $('#btn-stats').addEventListener('click', async () => {

@@ -23,24 +23,6 @@ const pref = {
   },
 };
 
-// Sortie encore à lire : tu n'as pas atteint ce chapitre
-const isUnread = (r, scan) => scan.chapter < r.to;
-
-// Chapitre à ouvrir : le prochain que tu n'as pas lu (sans dépasser la sortie),
-// sur le site où le chapitre est sorti s'il fait toujours partie du scan
-function releaseUrl(r, scan) {
-  const link = scanLinks(scan).includes(r.link) ? r.link : scan.url;
-  if (!link.includes('{ch}')) return link;
-  const next = isUnread(r, scan) ? Math.min(r.to, Math.floor(scan.chapter) + 1) : r.to;
-  return link.replace('{ch}', formatChapter(next));
-}
-
-function chaptersLabel(r) {
-  return r.to - r.from > 1
-    ? `Chapitres ${formatChapter(Math.floor(r.from) + 1)} à ${formatChapter(r.to)}`
-    : `Chapitre ${formatChapter(r.to)}`;
-}
-
 function dayLabel(iso) {
   const d = new Date(iso);
   const key = d.toLocaleDateString('sv');
@@ -164,17 +146,18 @@ $('#hide-read').addEventListener('change', () => {
 
 // ---------- Bibliothèque / Dernières sorties ----------
 
-const VIEWS = ['library', 'releases', 'discover'];
+const VIEWS = ['library', 'releases', 'planning', 'discover'];
 
 function showView(view) {
   if (!VIEWS.includes(view)) view = 'library';
   for (const v of VIEWS) $(`#view-${v}`).hidden = v !== view;
   // La barre « Vérifier les sorties » ne concerne pas « Découvrir »
-  $('.check-bar').hidden = view === 'discover';
+  $('.check-bar').hidden = view === 'discover' || view === 'planning';
   document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   pref.set('view', view);
   if (view === 'releases') renderReleases();
   if (view === 'discover' && typeof renderDiscover === 'function') renderDiscover();
+  if (view === 'planning' && typeof renderPlanning === 'function') renderPlanning();
 }
 
 $('#views').addEventListener('click', (e) => {
