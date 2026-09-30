@@ -182,11 +182,27 @@ function parseAnimeSamaResults(html) {
   }));
 }
 
-// Chemin de la version scans d'une fiche (« scan/vf »), en préférant la VF
-async function animeSamaScanPath(catalogueUrl) {
+// Versions de scans d'une fiche anime-sama, dans l'ordre du site :
+// [{ name: 'Scans (couleur)', path: 'scan/vf' }, { name: 'Scans (noir et blanc)', path: 'scan_noir-et-blanc/vf' }, …]
+// (certaines « versions » sont en fait des histoires à part : Side Story, Ragnarok…)
+async function animeSamaVersions(catalogueUrl) {
   const res = await fetch(catalogueUrl, { credentials: 'include' });
-  if (!res.ok) return null;
+  if (!res.ok) return [];
   const html = await res.text();
-  const paths = [...html.matchAll(/panneauScan\("([^"]*)",\s*"([^"]*)"\)/g)].map((m) => m[2]).filter((p) => p && p !== 'url');
+  return [...html.matchAll(/panneauScan\("([^"]*)",\s*"([^"]*)"\)/g)]
+    .map((m) => ({ name: m[1], path: m[2].replace(/\/+$/, '') }))
+    .filter((v) => v.path && v.path !== 'url');
+}
+
+// Chemin de la version scans principale d'une fiche (« scan/vf »)
+async function animeSamaScanPath(catalogueUrl) {
+  const paths = (await animeSamaVersions(catalogueUrl)).map((v) => v.path);
   return paths.find((p) => p === 'scan/vf') || paths.find((p) => p.startsWith('scan')) || null;
+}
+
+// Lien anime-sama découpé en fiche + version :
+// https://anime-sama.to/catalogue/one-piece/scan/vf/ -> { catalogue: 'https://anime-sama.to/catalogue/one-piece/', path: 'scan/vf' }
+function splitAnimeSamaLink(link) {
+  const m = (link || '').match(/^(https?:\/\/[^/]*anime-sama\.[^/]+\/catalogue\/[^/]+)\/?([^?#]*)/);
+  return m ? { catalogue: `${m[1]}/`, path: m[2].replace(/\/+$/, '') } : null;
 }

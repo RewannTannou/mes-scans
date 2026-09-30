@@ -44,7 +44,8 @@ async function showTracked(scans, scan, mode, tab) {
 
   const renderChapter = () => {
     const total = scan.latest != null ? ` / ${formatChapter(scan.latest)}` : '';
-    $('#t-chapter').textContent = `Chapitre ${formatChapter(scan.chapter)}${total}`;
+    const p = scan.position?.chapter === scan.chapter && scan.position.progress < FINISHED_AT ? scan.position.progress : 0;
+    $('#t-chapter').textContent = `Chapitre ${formatChapter(scan.chapter)}${p >= 0.02 ? ` (${Math.round(p * 100)} %)` : ''}${total}`;
     const unread = unreadCount(scan);
     const pub = PUB_STATUSES[scan.pub?.status];
     $('#t-site').textContent = siteName(scan.url)

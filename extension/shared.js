@@ -306,6 +306,76 @@ function cleanTitle(raw, url) {
   return slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// ---------- Progression dans un chapitre ----------
+
+// Un chapitre compte comme lu quand on a vu 95 % de ses images
+var FINISHED_AT = 0.95;
+
+// Dernier chapitre terminé : celui lu jusqu'au bout (scan.lastFinished) ou, à
+// défaut, celui d'avant le chapitre en cours (passer au suivant = avoir fini).
+function finishedChapters(scan) {
+  return Math.max(scan.lastFinished ?? -Infinity, Math.floor(scan.chapter) - 1);
+}
+
+// Zone de lecture de la page : de la première à la dernière grande image (les
+// pages du chapitre), pour ne pas compter les commentaires en dessous.
+// (Fonction autonome : exécutée dans la page par content.js.)
+function readingArea() {
+  const pages = [...document.images].filter((img) => img.getBoundingClientRect().width >= 300);
+  const loaded = pages.filter((img) => img.complete && img.naturalHeight > 0 && img.getBoundingClientRect().height >= 200);
+  if (loaded.length < 3) {
+    return { top: 0, bottom: document.documentElement.scrollHeight, pending: false };
+  }
+  const rects = pages.map((img) => img.getBoundingClientRect());
+  return {
+    top: Math.min(...rects.map((r) => r.top)) + scrollY,
+    bottom: Math.max(...rects.map((r) => r.bottom)) + scrollY,
+    pending: loaded.length < pages.length, // images pas encore chargées : la fin n'est pas atteinte
+  };
+}
+
+// Progression de 0 à 1 dans le chapitre, ou null si la page n'est pas assez
+// longue pour être mesurée (lecture « page par page »…)
+function readingProgress() {
+  const { top, bottom, pending } = readingArea();
+  const height = bottom - top;
+  if (height < innerHeight * 1.5) return null;
+  const progress = Math.min(1, Math.max(0, (scrollY + innerHeight - top) / height));
+  return pending ? Math.min(progress, FINISHED_AT - 0.01) : progress;
+}
+
+// Position de défilement qui correspond à une progression (pour reprendre la lecture)
+function scrollTargetFor(progress) {
+  const { top, bottom } = readingArea();
+  return Math.max(0, top + progress * (bottom - top) - innerHeight);
+}
+
+// ---------- Statuts suggérés ----------
+
+var INACTIVE_DAYS = 30; // « Pas lu depuis un mois : mettre en pause ? »
+
+function daysSince(iso) {
+  return (Date.now() - new Date(iso)) / 86400000;
+}
+
+// Suggestion pour un scan, ou null. key sert à ne plus la proposer si tu la refuses.
+function suggestionFor(s) {
+  const dismissed = s.dismissed || [];
+  const offer = (key, text, action, status) => (dismissed.includes(key) ? null : { key, text, action, status });
+  const unread = unreadCount(s);
+
+  if (s.status === 'reading' && s.pub?.status === 'FINISHED' && unread === 0) {
+    return offer('done', 'Tu as tout lu et la série est terminée.', 'Passer en « Terminé »', 'done');
+  }
+  if (s.status === 'reading' && s.lastRead && daysSince(s.lastRead) > INACTIVE_DAYS) {
+    return offer('pause', `Pas lu depuis ${Math.floor(daysSince(s.lastRead))} jours.`, 'Mettre « En pause »', 'paused');
+  }
+  if (s.status === 'done' && unread > 0) {
+    return offer(`resume-${s.latest}`, `La série continue : ${unread} chapitre${unread > 1 ? 's' : ''} à lire.`, 'Repasser « En cours »', 'reading');
+  }
+  return null;
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

@@ -424,3 +424,23 @@ dialog h2 { margin: 0 0 16px; }
   background: var(--text); color: var(--bg); font-weight: 600; font-size: .9rem;
   box-shadow: 0 8px 30px rgba(0,0,0,.45);
 }
+
+/* Lecture : progression, suggestions, rattrapage */
+.chapter { position: relative; overflow: hidden; }
+.ch-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.06); }
+.ch-progress span { display: block; height: 100%; background: var(--accent); }
+
+.suggestions { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+.suggestions h2 { font-size: 1rem; margin: 0 0 4px; color: var(--muted); font-weight: 600; }
+.suggestion {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--paused);
+  border-radius: 10px; padding: 10px 12px; font-size: .9rem;
+}
+.suggestion span { flex: 1; min-width: 220px; }
+.suggestions p { margin: 0; }
+
+.catchup {
+  margin: 0 0 16px; padding: 12px 16px; border-radius: 10px; font-size: .9rem;
+  background: rgba(255, 92, 122, .08); border: 1px solid rgba(255, 92, 122, .25);
+}

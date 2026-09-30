@@ -41,7 +41,7 @@ async function recordChapter(tab, num, visited) {
   }
 
   // Page d'un scan suivi : on demande à content.js de surveiller le chapitre
-  browser.tabs.sendMessage(tab.id, { type: 'watch' }).catch(() => {});
+  browser.tabs.sendMessage(tab.id, { type: 'watch', position: scan.position || null }).catch(() => {});
 
   // Badge sur l'icône : vert = chapitre détecté, bleu = scan reconnu mais chapitre introuvable
   browser.action.setBadgeText({ tabId: tab.id, text: formatChapter(num ?? scan.chapter) });
@@ -59,7 +59,9 @@ browser.tabs.onUpdated.addListener(
 );
 
 browser.runtime.onMessage.addListener((msg, sender) => {
-  if (msg.type === 'isTracked') return findTracked(sender.tab).then(Boolean);
+  // Réponse : false, ou la position enregistrée (pour proposer de reprendre la lecture)
+  if (msg.type === 'isTracked') return findTracked(sender.tab).then((hit) => hit && { position: hit.scan.position || null });
+  if (msg.type === 'progress' && sender.tab) enqueue(() => recordProgress(sender.tab, msg.num, msg.progress));
   if (msg.type === 'chapter' && sender.tab) enqueue(() => recordChapter(sender.tab, msg.num, false));
   if (msg.type === 'latest' && sender.tab) enqueue(() => recordLatestFromPage(sender.tab, msg.num));
   if (msg.type === 'checkNow') return Promise.all([checkNewChapters(), refreshPublications()]);
@@ -239,11 +241,26 @@ browser.commands.onCommand.addListener(async (command) => {
   });
 });
 
+// ---------- Progression dans le chapitre ----------
+// content.js envoie la progression (0 à 1) dans le chapitre affiché : on garde la
+// position pour proposer de reprendre, et on note le chapitre comme terminé
+// quand il est lu jusqu'au bout.
+
+async function recordProgress(tab, num, progress) {
+  const hit = await findTracked(tab);
+  if (!hit || hit.scan.chapter !== num) return; // position seulement pour le chapitre en cours
+  const { scans, scan } = hit;
+  scan.position = { chapter: num, progress: Math.round(progress * 100) / 100, at: new Date().toISOString() };
+  if (progress >= FINISHED_AT && num > (scan.lastFinished ?? -Infinity)) scan.lastFinished = num;
+  await saveScans(scans);
+}
+
 // ---------- Historique de lecture (statistiques) ----------
-// À chaque fois que le chapitre d'un scan avance, on note combien de chapitres
-// ont été lus ce jour-là : history = { '2026-09-25': { idDuScan: 3, … }, … }.
-// Un bond de plus de 10 chapitres d'un coup est une correction (import,
-// chapitre tapé à la main), pas une lecture : on ne le compte pas.
+// Un chapitre compte comme lu quand il est terminé : lu jusqu'au bout, ou quand
+// on passe au suivant (voir finishedChapters). On note combien de chapitres ont
+// été terminés chaque jour : history = { '2026-09-25': { idDuScan: 3, … }, … }.
+// Relire un ancien chapitre ne compte pas, et un bond de plus de 10 chapitres
+// d'un coup est une correction (import, chapitre tapé à la main), pas une lecture.
 
 const MAX_READ_JUMP = 10;
 const HISTORY_DAYS = 400;
@@ -255,10 +272,11 @@ function todayKey() {
 browser.storage.onChanged.addListener((changes) => {
   const { oldValue, newValue } = changes[STORAGE_KEY] || {};
   if (!oldValue || !newValue) return;
-  const before = new Map(oldValue.map((s) => [s.id, s.chapter]));
+  const before = new Map(oldValue.map((s) => [s.id, finishedChapters(s)]));
   const reads = [];
   for (const scan of newValue) {
-    const delta = scan.chapter - (before.get(scan.id) ?? scan.chapter);
+    if (!before.has(scan.id)) continue; // scan qui vient d'être ajouté
+    const delta = finishedChapters(scan) - before.get(scan.id);
     if (delta > 0 && delta <= MAX_READ_JUMP) reads.push([scan.id, Math.ceil(delta)]);
   }
   if (reads.length) enqueue(() => addToHistory(reads));

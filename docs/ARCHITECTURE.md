@@ -50,6 +50,7 @@ L'extension est écrite en JavaScript simple, sans framework ni étape de compil
 | `releases.js` | onglet `dashboard.html` | L'onglet « Dernières sorties » (liste ou catalogue). |
 | `catalog.js` | arrière-plan + onglet `dashboard.html` | Recherche, recommandations, tendances et import AniList ; recherche d'un manga sur anime-sama. |
 | `discover.js` | onglet `dashboard.html` | L'onglet « Découvrir ». |
+| `reading.js` | onglet `dashboard.html` | Statuts suggérés, résumé de rattrapage, choix de la version anime-sama. |
 
 **Source de vérité unique : `storage.local`.** Chaque contexte lit la liste, la modifie et la réenregistre. Les pages ouvertes (bibliothèque) se rafraîchissent via `storage.onChanged`. Dans l'arrière-plan, toutes les écritures passent par une **file d'attente** (`enqueue`) pour que deux mises à jour rapprochées ne s'écrasent pas.
 
@@ -193,10 +194,17 @@ Les requêtes partent de l'arrière-plan avec `credentials: 'include'` (cookies 
 
 ---
 
+## Progression dans un chapitre
+
+- `readingArea()` (dans la page) prend la zone qui va de la première à la dernière **grande image** (≥ 300 px de large) : les pages du chapitre, sans les commentaires en dessous. Tant qu'une image n'est pas chargée, la fin n'est pas considérée comme atteinte. Si la page a moins de 3 grandes images chargées, c'est toute la page qui compte.
+- `readingProgress()` : part de cette zone déjà affichée (0 à 1), ou `null` si la page est trop courte pour être mesurée (lecture page par page).
+- `content.js` envoie `{ type: 'progress', num, progress }` tous les 5 % et dès que le chapitre atteint `FINISHED_AT` (95 %). L'arrière-plan stocke `scan.position = { chapter, progress, at }` et, à 95 %, `scan.lastFinished`.
+- Reprise : `isTracked` (et `watch`) renvoient `scan.position` ; si le chapitre affiché est le même, commencé (5-95 %) et que la page est en haut, un bandeau (Shadow DOM, isolé des styles du site) propose de reprendre ; `scrollTargetFor(progress)` calcule la position, réappliquée à 0,8 s et 2 s tant que tu n'as pas fait défiler toi-même.
+
 ## Historique et statistiques
 
-- L'arrière-plan compare l'ancienne et la nouvelle liste à chaque modification (`storage.onChanged`). Pour chaque scan dont le chapitre **augmente de 1 à 10**, il ajoute la différence au jour courant dans `history`.
-- Un bond de plus de 10 chapitres est considéré comme une correction (import, saisie à la main) et n'est pas compté ; une baisse n'est jamais comptée.
+- Un chapitre compte comme lu quand il est **terminé** : `finishedChapters(scan) = max(scan.lastFinished, floor(chapter) − 1)` (lu jusqu'au bout, ou passé au suivant).
+- L'arrière-plan compare `finishedChapters` avant / après chaque modification (`storage.onChanged`) et ajoute la hausse (1 à 10) au jour courant dans `history`. Relire un ancien chapitre ne change pas `finishedChapters` ; un bond de plus de 10 est une correction (import, saisie à la main) et n'est pas compté.
 - `stats.js` calcule à l'ouverture : totaux sur 1/7/30 jours, série de jours consécutifs (qui continue depuis hier tant qu'aucune lecture n'a eu lieu aujourd'hui), record, top 5 sur 30 jours. Le graphique est un SVG généré à la main (une seule série, info-bulle au survol, tableau des valeurs dans « Voir les chiffres »).
 
 ---

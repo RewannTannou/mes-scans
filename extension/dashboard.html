@@ -47,6 +47,8 @@
     </select>
   </section>
 
+  <section id="suggestions" class="suggestions" hidden></section>
+
   <section id="resume" class="resume" hidden>
     <h2>Reprendre la lecture</h2>
     <div id="resume-row" class="resume-row"></div>
@@ -54,6 +56,7 @@
 
   <nav class="tabs" id="tabs"></nav>
 
+  <p id="catchup" class="catchup" hidden></p>
   <main id="grid" class="grid"></main>
   <p id="empty" class="empty" hidden>Aucun scan ici pour l'instant. Clique sur <b>+ Ajouter un scan</b> pour commencer.</p>
   </div>
@@ -109,6 +112,10 @@
           <select name="status"></select>
         </label>
       </div>
+      <label id="version-field" hidden>Version sur anime-sama
+        <select name="version"></select>
+        <small class="hint warn">Certaines « versions » sont des histoires à part (Side Story, suite…) : ajoute-les plutôt comme un scan séparé.</small>
+      </label>
       <label>Image de couverture (URL)
         <input name="cover" type="url" placeholder="Vide = couverture AniList automatique">
       </label>
@@ -140,5 +147,6 @@
   <script src="stats.js"></script>
   <script src="releases.js"></script>
   <script src="discover.js"></script>
+  <script src="reading.js"></script>
 </body>
 </html>

@@ -76,6 +76,28 @@ function pubLine(s) {
   return `<span class="pub" style="color:${pub.color}" title="Parution du manga (AniList)">${pub.label}${chapters}</span>`;
 }
 
+// ---------- Progression et temps de lecture ----------
+
+const MINUTES_PER_CHAPTER = 4; // moyenne pour un chapitre de manhwa / manga
+
+function readingTime(chapters) {
+  const minutes = chapters * MINUTES_PER_CHAPTER;
+  if (minutes < 60) return `≈ ${minutes} min`;
+  const hours = minutes / 60;
+  return `≈ ${hours < 10 ? Math.round(hours * 10) / 10 : Math.round(hours)} h`.replace('.', ',');
+}
+
+// Chapitre en cours commencé mais pas fini : « 45 % » + petite barre
+function chapterProgress(s) {
+  const p = s.position;
+  return p && p.chapter === s.chapter && p.progress >= 0.02 && p.progress < FINISHED_AT ? p.progress : null;
+}
+
+function progressBar(s) {
+  const p = chapterProgress(s);
+  return p === null ? '' : `<span class="ch-progress" title="Chapitre ${formatChapter(s.chapter)} lu à ${Math.round(p * 100)} %"><span style="width:${Math.round(p * 100)}%"></span></span>`;
+}
+
 function renderCard(s) {
   const st = STATUSES[s.status];
   const site = siteName(s.url);
@@ -83,7 +105,7 @@ function renderCard(s) {
   const sitesTitle = [site, ...others].join(', ');
   const unread = unreadCount(s);
   const unreadPill = unread === null ? ''
-    : unread > 0 ? `<span class="unread">${unread} à lire</span>`
+    : unread > 0 ? `<span class="unread" title="${readingTime(unread)} de lecture">${unread} à lire</span>`
     : '<span class="unread uptodate">✓ À jour</span>';
   const cover = s.cover
     ? `<img src="${escapeHtml(s.cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-initials="${escapeHtml(initials(s.title))}">`
@@ -106,6 +128,7 @@ function renderCard(s) {
         <div class="chapter">
           <button data-action="dec" title="Chapitre précédent">−</button>
           <span>Ch. ${formatChapter(s.chapter)}${s.latest != null ? `<span class="total"> / ${formatChapter(s.latest)}</span>` : ''}</span>
+          ${progressBar(s)}
           <button data-action="inc" title="Chapitre suivant">+</button>
         </div>
         <button class="read" data-action="read" ${s.url ? '' : 'disabled'}>${s.url ? 'Lire ▸' : 'Pas de lien'}</button>
@@ -132,7 +155,7 @@ function renderResume() {
           <div class="resume-thumb">${thumb}</div>
           <div class="resume-body">
             <h3 class="title" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3>
-            <p class="muted-small">Ch. ${formatChapter(s.chapter)} · ${timeAgo(s.lastRead)}${unread > 0 ? ` · <b class="accent">${unread} à lire</b>` : ''}</p>
+            <p class="muted-small">Ch. ${formatChapter(s.chapter)}${chapterProgress(s) !== null ? ` (${Math.round(chapterProgress(s) * 100)} %)` : ''} · ${timeAgo(s.lastRead)}${unread > 0 ? ` · <b class="accent">${unread} à lire</b>` : ''}</p>
             <button class="read" data-action="read">Continuer ▸</button>
           </div>
         </article>`;
@@ -147,6 +170,7 @@ function render() {
   const list = visibleScans();
   $('#grid').innerHTML = list.map(renderCard).join('');
   $('#empty').hidden = list.length > 0;
+  if (typeof renderReadingExtras === 'function') renderReadingExtras(); // reading.js : suggestions, rattrapage
 }
 
 // Couverture introuvable : on affiche les initiales à la place.
@@ -227,6 +251,7 @@ function openForm(scan = null) {
     ? `Trouvé : <a href="${escapeHtml(scan.pub.url)}" target="_blank">${escapeHtml(scan.pub.title || 'fiche AniList')}</a>. Si ce n'est pas le bon manga, colle ici le lien de la bonne fiche.`
     : scan?.pub?.checkedAt ? 'Aucune fiche trouvée pour ce titre : colle le lien de la fiche AniList.' : '';
   updateUrlHint();
+  if (typeof loadVersions === 'function') loadVersions(scan); // reading.js : versions anime-sama
   dialog.showModal();
   form.title.focus();
 }
@@ -272,7 +297,7 @@ form.addEventListener('submit', (e) => {
     .map((l) => detectChapter(l)?.template || l);
   const data = {
     title: form.title.value.trim(),
-    url: detected ? detected.template : url,
+    url: (typeof chosenVersionUrl === 'function' && chosenVersionUrl(url)) || (detected ? detected.template : url),
     altUrls,
     chapter: parseFloat(form.chapter.value) || 0,
     status: form.status.value,
