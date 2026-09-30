@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "lint": "npx web-ext lint --source-dir extension --self-hosted",
+    "lint": "npx web-ext lint --source-dir extension",
     "build": "npx web-ext build --source-dir extension --artifacts-dir dist --overwrite-dest",
     "start": "npx web-ext run --source-dir extension"
   },

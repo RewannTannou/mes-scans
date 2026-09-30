@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mes Scans",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Suis tes mangas, manhwas et webtoons sur tous tes sites de lecture : chapitre retenu automatiquement, nouveaux chapitres, planning et statistiques.",
   "icons": {
     "48": "icons/icon.svg",

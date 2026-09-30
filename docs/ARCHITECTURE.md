@@ -260,15 +260,21 @@ Si le site affiche le chapitre d'une façon que `collectChapterTexts` ne voit pa
 - Code et commentaires **en français**, comme l'interface.
 - Pas de dépendance ni de compilation : garder des fichiers lisibles tels quels (Mozilla les relit lors de la signature).
 - `shared.js` utilise `var` pour ses constantes de haut niveau : le fichier peut être injecté deux fois dans la même page, et un `const` redéclaré y provoquerait une erreur.
-- Tout texte venant d'un site ou de l'utilisateur passe par `escapeHtml` avant d'être inséré en HTML.
-- Avant chaque publication : `npm test` doit passer et `npm run lint` afficher **0 erreur** (les avertissements `innerHTML` sont attendus, les valeurs étant échappées). Les deux tournent aussi automatiquement sur GitHub.
+- Tout texte venant d'un site ou de l'utilisateur passe par `escapeHtml` avant d'être inséré en HTML, puis par `setHTML` (DOMPurify).
+- Avant chaque publication : `npm test` doit passer et `npx web-ext lint --source-dir extension` afficher **0 erreur** (seul avertissement attendu : `innerHTML` à l'intérieur de DOMPurify). Les deux tournent aussi automatiquement sur GitHub.
+- Ne jamais écrire `innerHTML` directement : utiliser `setHTML` ou les API DOM.
 - Toute nouvelle fonctionnalité de l'arrière-plan ou de `shared.js` vient avec un test dans `tests/`. Le faux Firefox (`tests/helpers/extension.js`) enregistre les notifications, téléchargements et badges dans `calls`, et `settle()` attend la fin des tâches en file d'attente.
 
 ---
 
-## Mises à jour automatiques
+## Mises à jour et publication
 
-- `browser_specific_settings.gecko.update_url` pointe vers `updates.json` à la racine du dépôt (servi par `raw.githubusercontent.com`).
-- Firefox le consulte environ une fois par jour et installe toute version plus récente listée, après avoir vérifié son empreinte `update_hash`.
-- La publication (`.github/workflows/release.yml`) ne se déclenche que si la version du manifest n'a pas encore de release `v<version>` : augmenter la version suffit pour publier.
-- Seules les installations d'une version **qui contient déjà `update_url`** (2.2.0 et suivantes) se mettent à jour seules.
+- Depuis la 2.6.1, l'extension est publiée sur le **store Mozilla** (canal *listed*) : c'est le store qui distribue les mises à jour. Le manifest n'a donc plus de `update_url` (interdit sur le store).
+- La publication (`.github/workflows/release.yml`) ne se déclenche que si la version du manifest n'a pas encore de release GitHub `v<version>` : augmenter la version suffit. Elle envoie la version au store sans attendre la vérification (`--approval-timeout 0`).
+- **Ancien canal (2.2.0 → 2.6.0)** : versions signées *unlisted* publiées dans les Releases GitHub, annoncées par `updates.json` (via `update_url`). `updates.json` reste figé sur la 2.6.0 : cette version n'a plus de `update_url`, donc les installations qui la reçoivent consultent ensuite le store par défaut.
+
+## Sécurité de l'affichage
+
+- Tout HTML construit dynamiquement passe par `setHTML(element, html)` (`shared.js`) : `DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true })` puis `replaceChildren`. Les valeurs venant des sites ou d'AniList sont en plus échappées avec `escapeHtml`.
+- Les listes déroulantes utilisent `setOptions` (`new Option`), et le bandeau « Reprendre » injecté dans les pages est construit élément par élément dans un Shadow DOM fermé.
+- `extension/vendor/purify.min.js` est DOMPurify **non modifié** (paquet npm officiel) : Mozilla le vérifie par son empreinte. `.gitattributes` empêche Git de convertir ses fins de ligne. Pour le mettre à jour : remplacer le fichier par celui du paquet npm de la nouvelle version et mettre à jour la version / l'empreinte dans `docs/store/FICHE.md`.

@@ -105,12 +105,10 @@ Pour ajouter la prise en charge d'un site, voir [Ajouter un site](docs/ARCHITECT
 
 L'extension nécessite **Firefox 142 ou plus récent** (ordinateur).
 
-### Version signée (recommandée)
-1. Télécharge le fichier `.xpi` de la dernière version sur la page [Releases](https://github.com/RewannTannou/mes-scans/releases).
-2. Ouvre-le avec Firefox (ou `about:addons` → roue ⚙️ → **Installer un module depuis un fichier…**).
-3. Accepte les autorisations demandées.
+### Depuis le store Mozilla (recommandé)
+Recherche **Mes Scans** sur [addons.mozilla.org](https://addons.mozilla.org) et clique sur **Ajouter à Firefox**. Les mises à jour arrivent ensuite automatiquement.
 
-Les versions suivantes **s'installent ensuite toutes seules** : Firefox vérifie les mises à jour environ une fois par jour. Pour vérifier tout de suite : `about:addons` → roue ⚙️ → **Rechercher des mises à jour**.
+> Les versions 2.2.0 à 2.6.0 étaient distribuées par les [Releases GitHub](https://github.com/RewannTannou/mes-scans/releases). Les installations faites ainsi passent d'elles-mêmes aux mises à jour du store à partir de la 2.6.0.
 
 ### Mode développeur (temporaire)
 1. Ouvre `about:debugging#/runtime/this-firefox`.
@@ -210,13 +208,14 @@ Les tests se trouvent dans `tests/`. Ils chargent les vrais scripts de l'extensi
 ### Publier une version (automatique)
 1. Augmente `version` dans `extension/manifest.json` et envoie sur `main`.
 2. Le workflow **Publication** (`.github/workflows/release.yml`) :
-   - fait signer l'extension par Mozilla (canal *unlisted*, non listé sur le store) ;
-   - crée une [Release](https://github.com/RewannTannou/mes-scans/releases) avec le `.xpi` signé ;
-   - ajoute la version à `updates.json`, le fichier que Firefox consulte via `update_url` : les installations existantes se mettent à jour toutes seules.
+   - lance les tests ;
+   - envoie la version au **store Mozilla** (canal *listed*) pour vérification ;
+   - crée une [Release](https://github.com/RewannTannou/mes-scans/releases) GitHub avec le zip de la version.
+3. Une fois la version validée par Mozilla (de quelques minutes à quelques jours), Firefox l'installe automatiquement chez tout le monde.
 
 **Prérequis (une seule fois)** : créer des clés API sur [addons.mozilla.org › Clés API](https://addons.mozilla.org/developers/addon/api/key/), puis les ajouter dans le dépôt GitHub (**Settings › Secrets and variables › Actions**) sous les noms `AMO_JWT_ISSUER` (« émetteur JWT ») et `AMO_JWT_SECRET` (« secret JWT »). Sans ces secrets, la publication est simplement ignorée.
 
-> Si Mozilla met la version en vérification manuelle (plus d'une heure), le workflow échoue : une fois la version approuvée, télécharge le `.xpi` depuis addons.mozilla.org et joins-le à une release à la main.
+La fiche du store (description, captures, politique de confidentialité, notes pour les vérificateurs) est dans [`docs/store/FICHE.md`](docs/store/FICHE.md).
 
 ### Documentation technique
 Le fonctionnement interne (modèle de données, détection des chapitres, messages entre scripts, ajout d'un site…) est décrit dans **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
@@ -242,14 +241,14 @@ GroupScanSite/
 │   ├── reading.js        Suggestions de statut, rattrapage, versions anime-sama
 │   ├── planning.js       Onglet « Planning » (sorties attendues)
 │   ├── style.css         Styles communs (bibliothèque et popup)
+│   ├── vendor/           DOMPurify (bibliothèque tierce officielle, non modifiée)
 │   └── icons/            Icônes
 ├── docs/
-│   └── ARCHITECTURE.md   Documentation technique
+│   ├── ARCHITECTURE.md   Documentation technique
+│   └── store/            Fiche du store Mozilla et captures d'écran
 ├── tests/                Tests automatiques (npm test)
-├── scripts/
-│   └── add-update.js     Ajoute une version à updates.json (utilisé par la publication)
 ├── .github/workflows/    Vérification (tests + lint) et publication automatique
-├── updates.json          Versions disponibles, consulté par Firefox pour les mises à jour
+├── updates.json          Ancien canal de mises à jour (figé sur la 2.6.0, voir docs/ARCHITECTURE.md)
 ├── package.json          Commandes npm (test, lint, build, start)
 ├── index.html, app.js,   Premier prototype : page web autonome, sans extension
 │   style.css             (données dans le navigateur, suivi manuel)

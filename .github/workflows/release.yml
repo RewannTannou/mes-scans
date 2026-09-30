@@ -1,9 +1,15 @@
 # Publication automatique : quand la version de extension/manifest.json change
-# sur main, l'extension est signée par Mozilla, publiée dans une « Release »
-# GitHub, et updates.json est mis à jour pour que Firefox l'installe tout seul.
+# sur main, l'extension est envoyée au store Mozilla (addons.mozilla.org, canal
+# « listed ») pour vérification, et une « Release » GitHub garde une trace de la
+# version avec son zip. Les utilisateurs reçoivent la mise à jour par le store
+# une fois la version validée par Mozilla.
 #
 # Prérequis (une seule fois) : deux secrets dans Settings > Secrets and variables > Actions
 #   AMO_JWT_ISSUER  et  AMO_JWT_SECRET  (clés API de addons.mozilla.org)
+#
+# Historique : jusqu'à la 2.6.0, l'extension était publiée ici même (canal « unlisted »,
+# fichier updates.json). updates.json reste figé sur la 2.6.0 pour que les anciennes
+# installations passent aux mises à jour du store.
 
 name: Publication
 
@@ -14,7 +20,7 @@ on:
   workflow_dispatch: # bouton « Run workflow » dans l'onglet Actions
 
 permissions:
-  contents: write # créer la release et mettre à jour updates.json
+  contents: write # créer la release GitHub
 
 concurrency:
   group: release
@@ -49,7 +55,7 @@ jobs:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
         run: |
           if [ -z "$AMO_JWT_ISSUER" ]; then
-            echo "::warning::Secrets AMO_JWT_ISSUER / AMO_JWT_SECRET absents : publication ignorée (voir README, « Mises à jour automatiques »)."
+            echo "::warning::Secrets AMO_JWT_ISSUER / AMO_JWT_SECRET absents : publication ignorée."
             echo "missing=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -57,17 +63,17 @@ jobs:
         if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
         run: npm test
 
-      - name: Signature par Mozilla
+      - name: Envoi au store Mozilla
         if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
+        # --approval-timeout 0 : on n'attend pas la vérification de Mozilla (parfois plusieurs jours)
         run: |
           npx --yes web-ext@latest sign \
             --source-dir extension \
             --artifacts-dir dist \
-            --channel unlisted \
+            --channel listed \
             --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
             --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
-            --approval-timeout 3600000
-          mv dist/*.xpi "dist/mes-scans-${{ steps.version.outputs.version }}.xpi"
+            --approval-timeout 0
 
       - name: Release GitHub
         if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
@@ -75,20 +81,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V=${{ steps.version.outputs.version }}
-          gh release create "v$V" "dist/mes-scans-$V.xpi" \
+          npx --yes web-ext@latest build --source-dir extension --artifacts-dir dist --filename "mes-scans-$V.zip" --overwrite-dest
+          gh release create "v$V" "dist/mes-scans-$V.zip" \
             --title "Mes Scans $V" \
-            --notes "Extension signée par Mozilla. Installation : ouvrir le fichier .xpi avec Firefox (ou about:addons > roue dentée > Installer un module depuis un fichier). Les versions suivantes s'installent ensuite automatiquement." \
+            --notes "Version envoyée au store Mozilla : elle arrive automatiquement dans Firefox une fois validée. Installation : https://addons.mozilla.org (rechercher « Mes Scans »)." \
             --generate-notes
-
-      - name: Mise à jour de updates.json
-        if: steps.version.outputs.skip != 'true' && steps.keys.outputs.missing != 'true'
-        run: |
-          V=${{ steps.version.outputs.version }}
-          node scripts/add-update.js "$V" \
-            "https://github.com/${{ github.repository }}/releases/download/v$V/mes-scans-$V.xpi" \
-            "dist/mes-scans-$V.xpi"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add updates.json
-          git commit -m "updates.json : version $V"
-          git push
