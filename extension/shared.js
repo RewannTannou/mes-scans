@@ -402,37 +402,74 @@ function finishedChapters(scan) {
   return Math.max(scan.lastFinished ?? -Infinity, Math.floor(scan.chapter) - 1);
 }
 
-// Zone de lecture de la page : de la première à la dernière grande image (les
-// pages du chapitre), pour ne pas compter les commentaires en dessous.
-// (Fonction autonome : exécutée dans la page par content.js.)
-function readingArea() {
-  const pages = [...document.images].filter((img) => img.getBoundingClientRect().width >= 300);
-  const loaded = pages.filter((img) => img.complete && img.naturalHeight > 0 && img.getBoundingClientRect().height >= 200);
-  if (loaded.length < 3) {
-    return { top: 0, bottom: document.documentElement.scrollHeight, pending: false };
+// Pages du chapitre : les images du lecteur du site (le conteneur qui en contient
+// le plus), dans l'ordre, y compris celles pas encore chargées. Beaucoup de sites
+// chargent les pages au fil du défilement : une page pas encore chargée mesure
+// 0 pixel, donc on se repère par numéro de page plutôt qu'en pourcentage.
+// (Fonctions autonomes : exécutées dans la page par content.js.)
+function chapterPages() {
+  const counts = new Map();
+  for (const img of document.images) {
+    for (const holder of [img.parentElement, img.parentElement?.parentElement]) {
+      if (holder) counts.set(holder, (counts.get(holder) || 0) + 1);
+    }
   }
-  const rects = pages.map((img) => img.getBoundingClientRect());
-  return {
-    top: Math.min(...rects.map((r) => r.top)) + scrollY,
-    bottom: Math.max(...rects.map((r) => r.bottom)) + scrollY,
-    pending: loaded.length < pages.length, // images pas encore chargées : la fin n'est pas atteinte
-  };
+  let reader = null;
+  let best = 0;
+  for (const [holder, n] of counts) {
+    // À égalité, le conteneur le plus proche des images (le premier rencontré)
+    if (n > best) {
+      reader = holder;
+      best = n;
+    }
+  }
+  // Les pages, sans les petites images (icônes, logos) déjà chargées
+  const isPage = (img) => !(img.complete && img.naturalWidth > 0 && img.naturalWidth < 200);
+  if (best >= 3) return [...reader.querySelectorAll('img')].filter(isPage);
+  return [...document.images].filter((img) => img.getBoundingClientRect().width >= 300);
 }
 
-// Progression de 0 à 1 dans le chapitre, ou null si la page n'est pas assez
-// longue pour être mesurée (lecture « page par page »…)
-function readingProgress() {
-  const { top, bottom, pending } = readingArea();
-  const height = bottom - top;
-  if (height < innerHeight * 1.5) return null;
-  const progress = Math.min(1, Math.max(0, (scrollY + innerHeight - top) / height));
-  return pending ? Math.min(progress, FINISHED_AT - 0.01) : progress;
+// Ligne de lecture : à 30 % du haut de la fenêtre (là où les yeux lisent)
+var READING_LINE = 0.3;
+
+// Position dans le chapitre : { page, offset, pages, progress }, ou null si la page
+// ne ressemble pas à un chapitre (moins de 3 pages).
+//   page     = numéro (à partir de 0) de la page sous la ligne de lecture
+//   offset   = endroit dans cette page (0 = haut, 1 = bas)
+//   progress = avancement de 0 à 1 ; 1 seulement quand la fin de la dernière page est visible
+function readingPosition() {
+  const pages = chapterPages();
+  if (pages.length < 3) return null;
+  const line = innerHeight * READING_LINE;
+  let page = pages.length - 1;
+  let offset = 1;
+  for (let i = 0; i < pages.length; i++) {
+    const r = pages[i].getBoundingClientRect();
+    if (r.bottom > line) {
+      page = i;
+      offset = r.height > 0 ? Math.min(1, Math.max(0, (line - r.top) / r.height)) : 0;
+      break;
+    }
+  }
+  const last = pages[pages.length - 1];
+  const lastRect = last.getBoundingClientRect();
+  const finished = last.complete && last.naturalHeight > 0 && lastRect.height > 100 && lastRect.bottom <= innerHeight + 40;
+  const progress = finished ? 1 : Math.min(FINISHED_AT - 0.01, (page + offset) / pages.length);
+  return { page, offset: Math.round(offset * 100) / 100, pages: pages.length, progress };
 }
 
-// Position de défilement qui correspond à une progression (pour reprendre la lecture)
-function scrollTargetFor(progress) {
-  const { top, bottom } = readingArea();
-  return Math.max(0, top + progress * (bottom - top) - innerHeight);
+// Fait défiler jusqu'à une position enregistrée ({ page, offset }, ou l'ancien
+// format { progress } converti en numéro de page). Renvoie false si la page visée
+// n'existe pas (encore).
+function scrollToPosition(position) {
+  const pages = chapterPages();
+  if (pages.length < 3) return false;
+  const page = position.page ?? Math.floor((position.progress || 0) * pages.length);
+  const img = pages[Math.min(page, pages.length - 1)];
+  const r = img.getBoundingClientRect();
+  const offset = position.page != null ? position.offset || 0 : 0;
+  scrollTo({ top: Math.max(0, scrollY + r.top + offset * r.height - innerHeight * READING_LINE), behavior: 'instant' });
+  return true;
 }
 
 // ---------- Statuts suggérés ----------

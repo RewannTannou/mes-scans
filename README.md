@@ -27,7 +27,7 @@ Plus besoin de noter tes chapitres ni de passer d'un site à l'autre pour savoir
 - Fonctionne aussi sur les sites qui **changent de chapitre sans changer d'adresse** (ex. anime-sama).
 - Le chapitre suit ta lecture **en avant comme en arrière**.
 - **Chapitre lu jusqu'au bout** : un chapitre ne compte comme lu (statistiques) qu'une fois ses images parcourues jusqu'à la fin, ou quand tu passes au suivant. Relire un ancien chapitre ne compte pas.
-- **Reprendre à la bonne page** : en revenant sur un chapitre commencé, un bandeau propose « Tu t'étais arrêté à 45 % — Reprendre ». La progression apparaît aussi sur les cartes et dans le popup.
+- **Reprise à la bonne page** : en revenant sur un chapitre commencé, tu es replacé directement à la page où tu t'étais arrêté (« Repris où tu t'étais arrêté — page 18/30 », avec un bouton pour revenir au début). La progression apparaît aussi sur les cartes et dans le popup.
 - **Badge sur l'icône** : vert = chapitre enregistré, bleu = scan reconnu mais chapitre introuvable sur la page.
 - **Raccourcis clavier** pour les sites où le chapitre n'est pas visible : `Alt+Maj+↑` (+1) et `Alt+Maj+↓` (−1).
 

@@ -21,7 +21,7 @@ Tu lis des mangas, manhwas ou webtoons sur plusieurs sites ? Mes Scans regroupe 
 📖 SUIVI AUTOMATIQUE
 • Le chapitre en cours est détecté tout seul pendant que tu lis (adresse de la page, titre ou menu de chapitre), même sur les sites qui changent de chapitre sans recharger la page.
 • Un chapitre compte comme lu quand tu l'as parcouru jusqu'au bout.
-• En revenant sur un chapitre commencé : « Tu t'étais arrêté à 45 % — Reprendre ».
+• En revenant sur un chapitre commencé, tu es replacé directement à la page où tu t'étais arrêté.
 • Raccourcis clavier Alt+Maj+↑ / ↓ pour avancer ou reculer d'un chapitre.
 
 🆕 NOUVEAUX CHAPITRES

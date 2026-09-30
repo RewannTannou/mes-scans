@@ -199,22 +199,11 @@ Les requêtes partent de l'arrière-plan avec `credentials: 'include'` (cookies 
 
 ## Progression dans un chapitre
 
-- `readingArea()` (dans la page) prend la zone qui va de la première à la dernière **grande image** (≥ 300 px de large) : les pages du chapitre, sans les commentaires en dessous. Tant qu'une image n'est pas chargée, la fin n'est pas considérée comme atteinte. Si la page a moins de 3 grandes images chargées, c'est toute la page qui compte.
-- `readingProgress()` : part de cette zone déjà affichée (0 à 1), ou `null` si la page est trop courte pour être mesurée (lecture page par page).
-- `content.js` envoie `{ type: 'progress', num, progress }` tous les 5 % et dès que le chapitre atteint `FINISHED_AT` (95 %). L'arrière-plan stocke `scan.position = { chapter, progress, at }` et, à 95 %, `scan.lastFinished`.
-- Reprise : `isTracked` (et `watch`) renvoient `scan.position` ; si le chapitre affiché est le même, commencé (5-95 %) et que la page est en haut, un bandeau (Shadow DOM, isolé des styles du site) propose de reprendre ; `scrollTargetFor(progress)` calcule la position, réappliquée à 0,8 s et 2 s tant que tu n'as pas fait défiler toi-même.
-
-## Planning, résumé et santé des sites
-
-- **Rythme de sortie** (`releaseRhythm(releases, scanId)`, `shared.js`) : à partir d'au moins 3 sorties du journal, écart médian entre deux sorties (insensible à une semaine de pause). Entre 5,5 et 8,5 jours, la série est hebdomadaire : jour de la semaine le plus fréquent, prochaine occurrence après la dernière sortie. Sinon : dernière sortie + écart médian. Au-delà de 60 jours ou en dessous de 12 h : pas de rythme.
-- **Planning** (`planning.js`) : colonnes « En retard » (date estimée passée), les 7 prochains jours, puis « Plus tard ».
-- **Résumé de la semaine** (`weeklyDigestIfNeeded`) : à chaque alarme, si 7 jours se sont écoulés depuis `lastDigest`, notification avec les chapitres sortis (journal) et lus (historique) sur 7 jours. La première fois ne fait que noter la date.
-- **Santé des sites** : `fetchLatestChapter(scan, report)` signale pour chaque lien si le site a répondu avec un chapitre ; `recordSiteHealth` met à jour `siteHealth` à la fin de chaque vérification.
-
-## Organisation et thème
-
-- Champs de scan ajoutés : `favorite` (booléen), `rating` (1 à 10 ou `null`), `notes` (texte). Genres : `scan.pub.genres` (AniList), rechargés une fois pour les fiches qui ne les avaient pas.
-- **Thème** : `settings.theme` = `dark` (défaut), `light` ou `auto`. `applyTheme` pose `data-theme` sur `<html>` ; les couleurs sont des variables CSS redéfinies pour `[data-theme="light"]` et pour `[data-theme="auto"]` quand le système est en clair. Le thème est aussi gardé dans le `localStorage` des pages de l'extension pour s'appliquer avant le premier affichage.
+- Beaucoup de sites (dont anime-sama) chargent les pages **au fil du défilement** : une page pas encore chargée mesure 0 pixel. La position se repère donc **par numéro de page**, pas en pourcentage de la hauteur.
+- `chapterPages()` (dans la page) : les images du lecteur du site, c'est-à-dire du conteneur (parent ou grand-parent) qui contient le plus d'images, dans l'ordre et y compris celles pas encore chargées ; sans les petites images déjà chargées (icônes, logos).
+- `readingPosition()` : `{ page, offset, pages, progress }` — la page sous la ligne de lecture (30 % du haut de la fenêtre), l'endroit dans cette page (0 à 1), et l'avancement. `progress` n'atteint 1 que lorsque la **fin de la dernière page** est visible (et chargée).
+- `content.js` envoie `{ type: 'progress', num, page, offset, pages, progress }` à chaque changement de page et dès que le chapitre est fini. L'arrière-plan stocke `scan.position = { chapter, page, offset, pages, progress, at }` et, à `FINISHED_AT` (95 %), `scan.lastFinished`.
+- **Reprise automatique** : `isTracked` (et `watch`) renvoient `scan.position`. Si le chapitre affiché est le même, commencé et pas fini, et que la page est encore en haut, `scrollToPosition` place directement la page enregistrée sous la ligne de lecture, puis réajuste toutes les 300 ms pendant 6 s (les pages qui se chargent décalent la suite), jusqu'à ce que tu fasses défiler toi-même. Un message discret (Shadow DOM fermé) confirme « Repris où tu t'étais arrêté (page 18/30) » avec un bouton « Revenir au début ».
 
 ## Historique et statistiques
 

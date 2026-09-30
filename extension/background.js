@@ -61,7 +61,7 @@ browser.tabs.onUpdated.addListener(
 browser.runtime.onMessage.addListener((msg, sender) => {
   // Réponse : false, ou la position enregistrée (pour proposer de reprendre la lecture)
   if (msg.type === 'isTracked') return findTracked(sender.tab).then((hit) => hit && { position: hit.scan.position || null });
-  if (msg.type === 'progress' && sender.tab) enqueue(() => recordProgress(sender.tab, msg.num, msg.progress));
+  if (msg.type === 'progress' && sender.tab) enqueue(() => recordProgress(sender.tab, msg));
   if (msg.type === 'chapter' && sender.tab) enqueue(() => recordChapter(sender.tab, msg.num, false));
   if (msg.type === 'latest' && sender.tab) enqueue(() => recordLatestFromPage(sender.tab, msg.num));
   if (msg.type === 'checkNow') return Promise.all([checkNewChapters(), refreshPublications()]);
@@ -267,11 +267,12 @@ browser.commands.onCommand.addListener(async (command) => {
 // position pour proposer de reprendre, et on note le chapitre comme terminé
 // quand il est lu jusqu'au bout.
 
-async function recordProgress(tab, num, progress) {
+// msg = { num, progress, page, offset, pages } (page et offset : voir readingPosition)
+async function recordProgress(tab, { num, progress, page, offset, pages }) {
   const hit = await findTracked(tab);
   if (!hit || hit.scan.chapter !== num) return; // position seulement pour le chapitre en cours
   const { scans, scan } = hit;
-  scan.position = { chapter: num, progress: Math.round(progress * 100) / 100, at: new Date().toISOString() };
+  scan.position = { chapter: num, progress: Math.round(progress * 100) / 100, page, offset, pages, at: new Date().toISOString() };
   if (progress >= FINISHED_AT && num > (scan.lastFinished ?? -Infinity)) scan.lastFinished = num;
   await saveScans(scans);
 }

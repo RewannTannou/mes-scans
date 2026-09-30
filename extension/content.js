@@ -2,8 +2,8 @@
 // dit pas que la page appartient à un scan suivi. Il surveille alors :
 //  - le chapitre affiché (menu déroulant, titre…), même si le site change de
 //    chapitre sans changer d'adresse (ex : anime-sama) ;
-//  - la progression dans le chapitre, pour savoir quand il est lu jusqu'au bout
-//    et proposer de reprendre à la bonne page la fois suivante.
+//  - la position dans le chapitre (numéro de page + endroit dans la page), pour
+//    savoir quand il est lu jusqu'au bout et y revenir tout seul la fois suivante.
 
 if (!window.__mesScansWatching) {
   window.__mesScansWatching = true;
@@ -11,9 +11,9 @@ if (!window.__mesScansWatching) {
   let last = null; // chapitre affiché
   let lastLatest = null;
   let started = false;
-  let savedPosition = null; // { chapter, progress } enregistrée la dernière fois
-  let resumeOffered = false;
-  let sentProgress = { chapter: null, progress: -1 };
+  let savedPosition = null; // { chapter, page, offset, progress } enregistrée la dernière fois
+  let resumedChapter = null; // chapitre pour lequel la reprise a déjà eu lieu
+  let sent = { chapter: null, progress: -1, page: -1 };
 
   // Plus grand chapitre proposé dans les menus déroulants = dernier chapitre sorti
   const latestInPage = () => {
@@ -27,9 +27,9 @@ if (!window.__mesScansWatching) {
     const num = chapterFromTexts(collectChapterTexts());
     if (num !== null && num !== last) {
       last = num;
-      sentProgress = { chapter: num, progress: -1 };
+      sent = { chapter: num, progress: -1, page: -1 };
       send({ type: 'chapter', num });
-      setTimeout(offerResume, 1500); // laisser les images du chapitre se placer
+      setTimeout(resume, 800); // laisser le site créer les pages du chapitre
     }
     const latest = latestInPage();
     if (latest !== null && latest !== lastLatest) {
@@ -38,79 +38,91 @@ if (!window.__mesScansWatching) {
     }
   };
 
-  // ---------- Progression ----------
+  // ---------- Position dans le chapitre ----------
 
-  const trackProgress = () => {
-    if (last === null) return;
-    const progress = readingProgress();
-    if (progress === null) return;
-    const finishedNow = progress >= FINISHED_AT && sentProgress.progress < FINISHED_AT;
-    // On prévient tous les 5 %, et tout de suite quand le chapitre est fini
-    if (finishedNow || Math.abs(progress - sentProgress.progress) >= 0.05) {
-      sentProgress = { chapter: last, progress };
-      send({ type: 'progress', num: last, progress });
+  const trackPosition = () => {
+    if (last === null || resuming) return;
+    const pos = readingPosition();
+    if (!pos) return;
+    const finishedNow = pos.progress >= FINISHED_AT && sent.progress < FINISHED_AT;
+    // On prévient à chaque changement de page, et tout de suite quand le chapitre est fini
+    if (finishedNow || pos.page !== sent.page || Math.abs(pos.progress - sent.progress) >= 0.05) {
+      sent = { chapter: last, ...pos };
+      savedPosition = { chapter: last, ...pos };
+      send({ type: 'progress', num: last, ...pos });
     }
   };
 
   let scrollTimer = null;
   const onScroll = () => {
     clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(trackProgress, 400);
+    scrollTimer = setTimeout(trackPosition, 400);
   };
 
-  // ---------- Reprendre la lecture ----------
+  // ---------- Reprise automatique ----------
+  // En revenant sur un chapitre commencé, on se replace directement à la page où
+  // tu t'étais arrêté. Les pages se chargent parfois au fil du défilement et
+  // décalent la suite : on réajuste pendant quelques secondes, et on s'arrête dès
+  // que tu fais défiler toi-même.
 
-  function offerResume() {
-    if (resumeOffered || !savedPosition || savedPosition.chapter !== last) return;
-    const { progress } = savedPosition;
-    if (progress < 0.05 || progress >= FINISHED_AT) return;
-    if ((readingProgress() ?? 0) > 0.1) return; // déjà plus loin dans la page
-    resumeOffered = true;
-    showResumeBanner(progress);
+  let resuming = false;
+
+  function resume() {
+    const pos = savedPosition;
+    if (!pos || pos.chapter !== last || resumedChapter === last) return;
+    const begun = (pos.page ?? 0) >= 1 || (pos.offset ?? 0) > 0.3 || (pos.progress ?? 0) >= 0.05;
+    if (!begun || pos.progress >= FINISHED_AT) return;
+    if (scrollY > 400) return; // tu es déjà descendu dans la page
+    resumedChapter = last;
+
+    resuming = true;
+    let userMoved = false;
+    const stop = () => (userMoved = true);
+    for (const ev of ['wheel', 'touchmove', 'keydown', 'mousedown']) addEventListener(ev, stop, { once: true, passive: true });
+
+    let tries = 0;
+    const tick = () => {
+      if (userMoved || tries++ > 20) {
+        resuming = false;
+        return;
+      }
+      scrollToPosition(pos);
+      setTimeout(tick, 300);
+    };
+    tick();
+    showResumeToast(pos);
   }
 
-  function showResumeBanner(progress) {
+  // Petit message discret en bas de la page, avec « Revenir au début »
+  function showResumeToast(pos) {
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;';
-    // Shadow DOM fermé : les styles du site ne touchent pas le bandeau, et inversement
+    // Shadow DOM fermé : les styles du site ne touchent pas le message, et inversement
     const root = host.attachShadow({ mode: 'closed' });
     const el = (tag, props) => Object.assign(document.createElement(tag), props);
     const style = el('style', {
       textContent: `
-        .box { display:flex; align-items:center; gap:10px; padding:10px 12px 10px 16px; border-radius:12px;
+        .box { display:flex; align-items:center; gap:10px; padding:9px 10px 9px 16px; border-radius:12px;
                background:#181b22; color:#e8eaf0; border:1px solid #2c313c; box-shadow:0 10px 30px rgba(0,0,0,.5);
-               font:600 14px/1.3 system-ui, sans-serif; }
-        button { font:inherit; border:none; border-radius:8px; padding:7px 14px; cursor:pointer; }
-        .go { background:#ff5c7a; color:#fff; }
-        .x { background:transparent; color:#8b92a3; padding:7px 9px; }`,
+               font:600 14px/1.3 system-ui, sans-serif; transition:opacity .4s; }
+        button { font:inherit; font-weight:600; border:none; border-radius:8px; padding:6px 12px; cursor:pointer;
+                 background:#2c313c; color:#e8eaf0; }
+        button:hover { background:#3a404d; }`,
     });
-    const go = el('button', { className: 'go', textContent: 'Reprendre' });
-    const x = el('button', { className: 'x', textContent: '✕', ariaLabel: 'Fermer' });
+    const where = pos.page != null && pos.pages ? `page ${pos.page + 1}/${pos.pages}` : `${Math.round(pos.progress * 100)} %`;
+    const top = el('button', { textContent: 'Revenir au début' });
     const box = el('div', { className: 'box' });
-    box.append(el('span', { textContent: `📖 Tu t'étais arrêté à ${Math.round(progress * 100)} % de ce chapitre` }), go, x);
+    box.append(el('span', { textContent: `📖 Repris où tu t'étais arrêté (${where})` }), top);
     root.append(style, box);
-
-    const close = () => host.remove();
-    x.addEventListener('click', close);
-    go.addEventListener('click', () => {
-      close();
-      resumeAt(progress);
-    });
     document.documentElement.appendChild(host);
-    setTimeout(close, 15000);
-  }
 
-  // Les images continuent parfois de se charger : on réajuste deux fois,
-  // sauf si tu as fait défiler la page toi-même entre-temps
-  function resumeAt(progress) {
-    let userScrolled = false;
-    const stop = () => (userScrolled = true);
-    addEventListener('wheel', stop, { once: true, passive: true });
-    addEventListener('touchmove', stop, { once: true, passive: true });
-    const jump = () => !userScrolled && scrollTo({ top: scrollTargetFor(progress), behavior: 'instant' });
-    jump();
-    setTimeout(jump, 800);
-    setTimeout(jump, 2000);
+    top.addEventListener('click', () => {
+      resuming = false;
+      scrollTo({ top: 0, behavior: 'instant' });
+      host.remove();
+    });
+    setTimeout(() => (box.style.opacity = '0'), 6000);
+    setTimeout(() => host.remove(), 6500);
   }
 
   // ---------- Démarrage ----------
